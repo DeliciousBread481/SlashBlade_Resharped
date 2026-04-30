@@ -21,6 +21,7 @@ public class EntityDropEvent {
     @SubscribeEvent
     public static void dropBlade(LivingDropsEvent event) {
         LivingEntity entity = event.getEntity();
+        
         var bladeRegistry = SlashBlade.getSlashBladeDefinitionRegistry(entity.level());
         entity.level().registryAccess().registryOrThrow(EntityDropEntry.REGISTRY_KEY).forEach(entry -> {
             if (!ForgeRegistries.ENTITY_TYPES.containsKey(entry.entityType())) {

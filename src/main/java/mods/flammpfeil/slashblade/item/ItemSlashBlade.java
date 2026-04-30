@@ -420,12 +420,16 @@ public class ItemSlashBlade extends SwordItem {
             (ComboStateRegistry.REGISTRY.get().getValue(state.getComboSeq()) != null
                     ? ComboStateRegistry.REGISTRY.get().getValue(state.getComboSeq())
                     : ComboStateRegistry.NONE.get()).holdAction(player);
-            var swordType = SwordType.from(stack);
-            if (state.isBroken() || state.isSealed() || !(swordType.contains(SwordType.ENCHANTED))) {
-                return;
+            int ticks = player.getTicksUsingItem();
+            
+            SlashBladeEvent.ChargeActionEvent event = new SlashBladeEvent.ChargeActionEvent(player, ticks, state);
+            MinecraftForge.EVENT_BUS.post(event);
+            if (event.isCanceled()) {
+                return ;
             }
+            
             if (!player.level().isClientSide()) {
-                int ticks = player.getTicksUsingItem();
+                
                 int fullChargeTicks = state.getFullChargeTicks(player);
                 if (0 < ticks) {
                     if (ticks == fullChargeTicks) {// state.getFullChargeTicks(player)){
@@ -435,6 +439,7 @@ public class ItemSlashBlade extends SwordItem {
                     }
                 }
             }
+            
         });
     }
 

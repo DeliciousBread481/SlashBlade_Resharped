@@ -356,7 +356,9 @@ public class EntityAbstractSummonedSword extends Projectile implements IShootabl
                     raytraceresult = entityraytraceresult;
                 }
 
-                if (raytraceresult != null && raytraceresult.getType() == HitResult.Type.ENTITY) {
+                boolean impactCheck = !net.minecraftforge.event.ForgeEventFactory.onProjectileImpact(this, raytraceresult);
+				if (raytraceresult != null && raytraceresult.getType() == HitResult.Type.ENTITY
+                		&& impactCheck) {
                     Entity entity = null;
                     if (raytraceresult instanceof EntityHitResult) {
                         entity = ((EntityHitResult) raytraceresult).getEntity();
@@ -371,7 +373,7 @@ public class EntityAbstractSummonedSword extends Projectile implements IShootabl
                 }
 
                 if (raytraceresult != null && !(disallowedHitBlock && raytraceresult.getType() == HitResult.Type.BLOCK)
-                        && !net.minecraftforge.event.ForgeEventFactory.onProjectileImpact(this, raytraceresult)) {
+                        && impactCheck) {
                     this.onHit(raytraceresult);
                     this.hasImpulse = true;
                 }

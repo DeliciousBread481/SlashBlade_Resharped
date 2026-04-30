@@ -309,8 +309,12 @@ public interface ISlashBladeState extends INBTSerializable<CompoundTag> {
         if (current == null) {
             return ComboStateRegistry.NONE.getId();
         }
-
-        ResourceLocation next = current.getNext(user);
+        
+        var event = new SlashBladeEvent.NextComboEvent(user.getMainHandItem(), this, user, current.getNext(user));
+        MinecraftForge.EVENT_BUS.post(event);
+        ResourceLocation next = event.getNextCombo();
+        if(event.isCanceled())
+        	return ComboStateRegistry.NONE.getId();
         if (!next.equals(ComboStateRegistry.NONE.getId()) && next.equals(currentloc)) {
             return ComboStateRegistry.NONE.getId();
         }
@@ -382,7 +386,7 @@ public interface ISlashBladeState extends INBTSerializable<CompoundTag> {
             csloc = this.getSlashArts().doArts(type, user);
         }
 
-        SlashBladeEvent.ChargeActionEvent event = new SlashBladeEvent.ChargeActionEvent(user, elapsed, this, csloc,
+        SlashBladeEvent.PerformSlashArtEvent event = new SlashBladeEvent.PerformSlashArtEvent(user, elapsed, this, csloc,
                 type);
         MinecraftForge.EVENT_BUS.post(event);
         if (event.isCanceled()) {
@@ -438,7 +442,12 @@ public interface ISlashBladeState extends INBTSerializable<CompoundTag> {
                 while (!current.equals(ComboStateRegistry.NONE.getId()) && currentCS.getTimeoutMS() < time) {
                     time -= currentCS.getTimeoutMS();
 
-                    current = currentCS.getNextOfTimeout(user);
+                    var event = new SlashBladeEvent.NextOfTimeOutComboEvent(user.getMainHandItem(), this, user, currentCS.getNextOfTimeout(user));
+                    MinecraftForge.EVENT_BUS.post(event);
+                    current = event.getNextCombo();
+                    if(event.isCanceled())
+                    	current = ComboStateRegistry.NONE.getId();
+                    
                     this.updateComboSeq(user, current);
                 }
             }

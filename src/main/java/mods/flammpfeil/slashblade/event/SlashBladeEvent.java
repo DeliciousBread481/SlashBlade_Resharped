@@ -61,6 +61,53 @@ public abstract class SlashBladeEvent extends Event {
         }
 
     }
+    
+    public static class NextComboEvent extends SlashBladeEvent {
+    	private final LivingEntity user;
+        private ResourceLocation nextCombo;
+
+        public NextComboEvent(ItemStack blade, ISlashBladeState state, LivingEntity user, ResourceLocation combo) {
+            super(blade, state);
+            this.user = user;
+            this.setNextCombo(combo);
+        }
+        
+        public LivingEntity getUser() {
+            return user;
+        }
+
+        public ResourceLocation getNextCombo() {
+            return nextCombo;
+        }
+
+        public void setNextCombo(ResourceLocation nextCombo) {
+            this.nextCombo = nextCombo;
+        }
+
+    }
+    
+    public static class NextOfTimeOutComboEvent extends SlashBladeEvent {
+        private ResourceLocation nextCombo;
+        private final LivingEntity user;
+        public NextOfTimeOutComboEvent(ItemStack blade, ISlashBladeState state, LivingEntity user, ResourceLocation combo) {
+            super(blade, state);
+            this.user = user;
+            this.setNextCombo(combo);
+        }
+        
+        public LivingEntity getUser() {
+            return user;
+        }
+        
+        public ResourceLocation getNextCombo() {
+            return nextCombo;
+        }
+
+        public void setNextCombo(ResourceLocation nextCombo) {
+            this.nextCombo = nextCombo;
+        }
+
+    }
 
     public static class AddProudSoulEvent extends SlashBladeEvent {
         private final int originCount;
@@ -289,14 +336,14 @@ public abstract class SlashBladeEvent extends Event {
     }
 
     @Cancelable
-    public static class ChargeActionEvent extends Event {
+    public static class PerformSlashArtEvent extends Event {
         private final LivingEntity entityLiving;
         private final int elapsed;
         private final ISlashBladeState state;
         private ResourceLocation comboState;
         private final SlashArts.ArtsType type;
 
-        public ChargeActionEvent(LivingEntity entityLiving, int elapsed, ISlashBladeState state, ResourceLocation comboState, SlashArts.ArtsType type) {
+        public PerformSlashArtEvent(LivingEntity entityLiving, int elapsed, ISlashBladeState state, ResourceLocation comboState, SlashArts.ArtsType type) {
             this.entityLiving = entityLiving;
             this.elapsed = elapsed;
             this.state = state;
@@ -327,6 +374,32 @@ public abstract class SlashBladeEvent extends Event {
         public SlashArts.ArtsType getType() {
             return type;
         }
+    }
+    
+    @Cancelable
+    public static class ChargeActionEvent extends Event {
+        private final LivingEntity entityLiving;
+        private final int chargeTicks;
+        private final ISlashBladeState state;
+
+        public ChargeActionEvent(LivingEntity entityLiving, int chargeTicks, ISlashBladeState state) {
+            this.entityLiving = entityLiving;
+            this.chargeTicks = chargeTicks;
+            this.state = state;
+        }
+
+        public LivingEntity getEntityLiving() {
+            return entityLiving;
+        }
+
+        public int getChargeTicks() {
+            return chargeTicks;
+        }
+
+        public ISlashBladeState getSlashBladeState() {
+            return state;
+        }
+
     }
 
     public static class SummonedSwordOnHitEntityEvent extends Event {
