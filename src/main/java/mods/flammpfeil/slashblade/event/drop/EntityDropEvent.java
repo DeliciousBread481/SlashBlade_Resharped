@@ -1,29 +1,34 @@
 package mods.flammpfeil.slashblade.event.drop;
 
+import mods.flammpfeil.slashblade.RegistryEvents;
 import mods.flammpfeil.slashblade.SlashBlade;
 import mods.flammpfeil.slashblade.SlashBladeConfig;
 import mods.flammpfeil.slashblade.entity.BladeItemEntity;
 import mods.flammpfeil.slashblade.item.ItemSlashBlade;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.event.entity.living.LivingDropsEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.item.enchantment.Enchantments;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.living.LivingDropsEvent;
 
 import java.util.Objects;
 
-@Mod.EventBusSubscriber
+@EventBusSubscriber(modid = SlashBlade.MODID)
 public class EntityDropEvent {
     @SubscribeEvent
     public static void dropBlade(LivingDropsEvent event) {
         LivingEntity entity = event.getEntity();
+        
         var bladeRegistry = SlashBlade.getSlashBladeDefinitionRegistry(entity.level());
         entity.level().registryAccess().registryOrThrow(EntityDropEntry.REGISTRY_KEY).forEach(entry -> {
-            if (!ForgeRegistries.ENTITY_TYPES.containsKey(entry.entityType())) {
+            if (!BuiltInRegistries.ENTITY_TYPE.containsKey(entry.entityType())) {
                 return;
             }
             if (!bladeRegistry.containsKey(entry.bladeName())) {
@@ -41,15 +46,21 @@ public class EntityDropEvent {
                 }
             }
 
-            float resultRate = Math.min(1F, entry.dropRate() + event.getLootingLevel() * 0.1F);
-
+            int lootingLevel = 0;
+            if (event.getSource().getEntity() instanceof LivingEntity lootAttacker) {
+                var enchLookup = lootAttacker.registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
+                lootingLevel = EnchantmentHelper.getEnchantmentLevel(enchLookup.getOrThrow(Enchantments.LOOTING), lootAttacker);
+            }
+            float resultRate = Math.min(1F, entry.dropRate() + lootingLevel * 0.1F);
+            final ItemStack blade = Objects.requireNonNull(bladeRegistry.get(entry.bladeName())).getBlade(event.getEntity().registryAccess());
             if (entry.dropFixedPoint()) {
-                dropBlade(entity, ForgeRegistries.ENTITY_TYPES.getValue(entry.entityType()),
-                        Objects.requireNonNull(bladeRegistry.get(entry.bladeName())).getBlade(), resultRate, entry.dropPoint().x,
+                dropBlade(entity, BuiltInRegistries.ENTITY_TYPE.get(entry.entityType()),
+                		blade, resultRate, entry.dropPoint().x,
                         entry.dropPoint().y, entry.dropPoint().z);
             } else {
-                dropBlade(entity, ForgeRegistries.ENTITY_TYPES.getValue(entry.entityType()),
-                        Objects.requireNonNull(bladeRegistry.get(entry.bladeName())).getBlade(), resultRate, entity.getX(), entity.getY(),
+                
+				dropBlade(entity, BuiltInRegistries.ENTITY_TYPE.get(entry.entityType()),
+                        blade, resultRate, entity.getX(), entity.getY(),
                         entity.getZ());
             }
         });
@@ -65,7 +76,7 @@ public class EntityDropEvent {
                 return;
             }
             ItemEntity itementity = new ItemEntity(entity.level(), x, y, z, blade);
-            BladeItemEntity e = new BladeItemEntity(SlashBlade.RegistryEvents.BladeItem, entity.level());
+            BladeItemEntity e = new BladeItemEntity(RegistryEvents.BladeItem, entity.level());
 
             e.restoreFrom(itementity);
             e.init();
@@ -76,7 +87,7 @@ public class EntityDropEvent {
 
             e.setAirSupply(-1);
 
-            e.setThrower(entity.getUUID());
+            e.setThrower(entity);
 
             entity.level().addFreshEntity(e);
         }

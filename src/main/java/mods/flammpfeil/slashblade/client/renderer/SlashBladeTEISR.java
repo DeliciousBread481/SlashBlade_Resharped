@@ -6,6 +6,8 @@ import mods.flammpfeil.slashblade.client.renderer.model.BladeFirstPersonRender;
 import mods.flammpfeil.slashblade.client.renderer.model.BladeModel;
 import mods.flammpfeil.slashblade.client.renderer.model.BladeModelManager;
 import mods.flammpfeil.slashblade.client.renderer.model.obj.WavefrontObject;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateData;
 import mods.flammpfeil.slashblade.client.renderer.util.BladeRenderState;
 import mods.flammpfeil.slashblade.client.renderer.util.MSAutoCloser;
 import mods.flammpfeil.slashblade.entity.BladeStandEntity;
@@ -20,7 +22,6 @@ import net.minecraft.client.model.geom.EntityModelSet;
 import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderDispatcher;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.HumanoidArm;
@@ -142,11 +143,11 @@ public class SlashBladeTEISR extends BlockEntityWithoutLevelRenderer {
 
         EnumSet<SwordType> types = SwordType.from(stack);
 
-        ResourceLocation modelLocation = stack.getCapability(ItemSlashBlade.BLADESTATE)
+        ResourceLocation modelLocation = BladeStateAccess.of(stack)
                 .filter(s -> s.getModel().isPresent()).map(s -> s.getModel().orElseGet(() -> stackDefaultModel(stack)))
                 .orElseGet(() -> stackDefaultModel(stack));
         WavefrontObject model = BladeModelManager.getInstance().getModel(modelLocation);
-        ResourceLocation textureLocation = stack.getCapability(ItemSlashBlade.BLADESTATE)
+        ResourceLocation textureLocation = BladeStateAccess.of(stack)
                 .filter(s -> s.getTexture().isPresent()).map(s -> s.getTexture().orElseGet(() -> stackDefaultTexture(stack)))
                 .orElseGet(() -> stackDefaultTexture(stack));
 
@@ -191,64 +192,54 @@ public class SlashBladeTEISR extends BlockEntityWithoutLevelRenderer {
     }
 
     public ResourceLocation stackDefaultModel(ItemStack stack) {
-        CompoundTag tag = stack.getOrCreateTag();
-        if (!tag.contains("bladeState")) {
-            return DefaultResources.resourceDefaultModel;
-        }
-        CompoundTag stateTag = stack.getTagElement("bladeState");
-        String name = null;
-        if (stateTag != null) {
-            name = stateTag.getString("ModelName");
-        }
-        if (!(stack.getItem() instanceof ItemSlashBladeDetune)) {
-            String key = null;
-            if (stateTag != null) {
-                key = stateTag.getString("translationKey");
-            }
-            if (key != null && !key.isBlank()) {
-                ResourceLocation bladeName =
-                        ResourceLocation.tryParse(key.substring(5).replaceFirst(Pattern.quote("."), Matcher.quoteReplacement(":")));
-                SlashBladeDefinition slashBladeDefinition = BladeModelManager.getClientSlashBladeRegistry().get(bladeName);
+        BladeStateAccess.of(stack);
+        BladeStateData data = BladeStateAccess.getDataOrDefault(stack);
+        String name = data.model().map(ResourceLocation::toString).orElse(null);
 
-                if (slashBladeDefinition != null) {
-                    name = slashBladeDefinition.getRenderDefinition().getModelName().toString();
+        if (!(stack.getItem() instanceof ItemSlashBladeDetune)) {
+            String key = data.translationKey();
+            if (key != null && !key.isBlank()) {
+                try {
+                    ResourceLocation bladeName =
+                            ResourceLocation.parse(key.substring(5).replaceFirst(Pattern.quote("."), Matcher.quoteReplacement(":")));
+					SlashBladeDefinition slashBladeDefinition = BladeModelManager
+                            .getClientSlashBladeRegistry().get(bladeName);
+                    if (slashBladeDefinition != null) {
+                        name = slashBladeDefinition.getRenderDefinition().getModelName().toString();
+                    }
+                } catch (Exception e) {
+                    // ignore
                 }
             }
         }
-        if (name != null) {
-            return !name.isBlank()
-                    ? ResourceLocation.tryParse(name) : DefaultResources.resourceDefaultModel;
+        if (name != null && !name.isBlank()) {
+            return ResourceLocation.tryParse(name);
         }
         return DefaultResources.resourceDefaultModel;
     }
 
     public ResourceLocation stackDefaultTexture(ItemStack stack) {
-        CompoundTag tag = stack.getOrCreateTag();
-        if (!tag.contains("bladeState")) {
-            return DefaultResources.resourceDefaultTexture;
-        }
-        CompoundTag stateTag = stack.getTagElement("bladeState");
-        String name = null;
-        if (stateTag != null) {
-            name = stateTag.getString("TextureName");
-        }
+        BladeStateAccess.of(stack);
+        BladeStateData data = BladeStateAccess.getDataOrDefault(stack);
+        String name = data.texture().map(ResourceLocation::toString).orElse(null);
+
         if (!(stack.getItem() instanceof ItemSlashBladeDetune)) {
-            String key = null;
-            if (stateTag != null) {
-                key = stateTag.getString("translationKey");
-            }
+            String key = data.translationKey();
             if (key != null && !key.isBlank()) {
-                ResourceLocation bladeName =
-                        ResourceLocation.tryParse(key.substring(5).replaceFirst(Pattern.quote("."), Matcher.quoteReplacement(":")));
-                SlashBladeDefinition slashBladeDefinition = BladeModelManager.getClientSlashBladeRegistry().get(bladeName);
-                if (slashBladeDefinition != null) {
-                    name = slashBladeDefinition.getRenderDefinition().getTextureName().toString();
+                try {
+                    ResourceLocation bladeName =
+                            ResourceLocation.parse(key.substring(5).replaceFirst(Pattern.quote("."), Matcher.quoteReplacement(":")));
+                    SlashBladeDefinition slashBladeDefinition = BladeModelManager.getClientSlashBladeRegistry().get(bladeName);
+                    if (slashBladeDefinition != null) {
+                        name = slashBladeDefinition.getRenderDefinition().getTextureName().toString();
+                    }
+                } catch (Exception e) {
+                    // ignore
                 }
             }
         }
-        if (name != null) {
-            return !name.isBlank()
-                    ? ResourceLocation.tryParse(name) : DefaultResources.resourceDefaultTexture;
+        if (name != null && !name.isBlank()) {
+            return ResourceLocation.tryParse(name);
         }
         return DefaultResources.resourceDefaultTexture;
     }
@@ -263,11 +254,11 @@ public class SlashBladeTEISR extends BlockEntityWithoutLevelRenderer {
         EnumSet<SwordType> types = SwordType.from(stack);
         // BladeModel.itemBlade.getModelLocation(itemStackIn)
 
-        ResourceLocation modelLocation = stack.getCapability(ItemSlashBlade.BLADESTATE)
+        ResourceLocation modelLocation = BladeStateAccess.of(stack)
                 .filter(s -> s.getModel().isPresent()).map(s -> s.getModel().orElseGet(() -> stackDefaultModel(stack)))
                 .orElseGet(() -> stackDefaultModel(stack));
         WavefrontObject model = BladeModelManager.getInstance().getModel(modelLocation);
-        ResourceLocation textureLocation = stack.getCapability(ItemSlashBlade.BLADESTATE)
+        ResourceLocation textureLocation = BladeStateAccess.of(stack)
                 .filter(s -> s.getTexture().isPresent()).map(s -> s.getTexture().orElseGet(() -> stackDefaultTexture(stack)))
                 .orElseGet(() -> stackDefaultTexture(stack));
 

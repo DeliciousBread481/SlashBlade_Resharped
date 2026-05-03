@@ -1,5 +1,6 @@
 package mods.flammpfeil.slashblade.thetwilightforest.mixin;
 
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.util.EnchantmentsHelper;
 import net.minecraft.world.item.ItemStack;
@@ -22,9 +23,12 @@ public class UncraftingMenuMixin {
             return;
         }
 
-        // 获取刀状态（若缺失能力则直接抛出异常）
-        var inputState = input.getCapability(ItemSlashBlade.BLADESTATE).orElseThrow(NullPointerException::new);
-        var outputState = output.getCapability(ItemSlashBlade.BLADESTATE).orElseThrow(NullPointerException::new);
+        // 获取刀状态（缺失则安全返回）
+        var inputState = BladeStateAccess.of(input).orElse(null);
+        var outputState = BladeStateAccess.of(output).orElse(null);
+        if (inputState == null || outputState == null) {
+            return;
+        }
 
         // 判断是否为同一类刀
         if (!inputState.getTranslationKey().equals(outputState.getTranslationKey())) {

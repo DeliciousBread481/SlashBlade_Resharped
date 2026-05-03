@@ -2,23 +2,23 @@ package mods.flammpfeil.slashblade.event.bladestand;
 
 import mods.flammpfeil.slashblade.capability.slashblade.ISlashBladeState;
 import mods.flammpfeil.slashblade.event.SlashBladeEvent;
+import net.minecraft.core.Holder;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantment;
-import net.minecraftforge.eventbus.api.Cancelable;
+import net.neoforged.bus.api.ICancellableEvent;
 
 import javax.annotation.Nullable;
 
-@Cancelable
-public class ProudSoulEnchantmentEvent extends SlashBladeEvent {
+public class ProudSoulEnchantmentEvent extends SlashBladeEvent implements ICancellableEvent {
     private int totalShrinkCount;
     private float probability;
-    private Enchantment enchantment;
+    private Holder<Enchantment> enchantment;
     private int enchantLevel;
     private boolean tryNextEnchant;
     private final SlashBladeEvent.BladeStandAttackEvent originalEvent;
 
     public ProudSoulEnchantmentEvent(ItemStack blade, ISlashBladeState state,
-                                     Enchantment enchantment, int enchantLevel, boolean tryNextEnchant, float probability,
+                                     Holder<Enchantment> enchantment, int enchantLevel, boolean tryNextEnchant, float probability,
                                      int totalShrinkCount, SlashBladeEvent.BladeStandAttackEvent originalEvent) {
         super(blade, state);
         this.enchantment = enchantment;
@@ -29,11 +29,11 @@ public class ProudSoulEnchantmentEvent extends SlashBladeEvent {
         this.originalEvent = originalEvent;
     }
 
-    public Enchantment getEnchantment() {
+    public Holder<Enchantment> getEnchantment() {
         return enchantment;
     }
 
-    public Enchantment setEnchantment(Enchantment enchantment) {
+    public Holder<Enchantment> setEnchantment(Holder<Enchantment> enchantment) {
         this.enchantment = enchantment;
         return enchantment;
     }

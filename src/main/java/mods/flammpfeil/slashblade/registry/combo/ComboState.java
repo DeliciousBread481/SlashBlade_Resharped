@@ -3,14 +3,15 @@ package mods.flammpfeil.slashblade.registry.combo;
 import com.google.common.collect.Maps;
 import mods.flammpfeil.slashblade.SlashBlade;
 import mods.flammpfeil.slashblade.ability.ArrowReflector;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import mods.flammpfeil.slashblade.capability.slashblade.ISlashBladeState;
 import mods.flammpfeil.slashblade.init.DefaultResources;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.registry.ComboStateRegistry;
 import mods.flammpfeil.slashblade.slasharts.SlashArts;
 import mods.flammpfeil.slashblade.util.AdvancementHelper;
 import mods.flammpfeil.slashblade.util.TimeValueHelper;
 import net.minecraft.core.Registry;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
@@ -20,6 +21,7 @@ import net.minecraft.world.item.enchantment.Enchantments;
 import javax.annotation.Nonnull;
 import java.util.Map;
 import java.util.Objects;
+import java.util.WeakHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -27,7 +29,7 @@ import java.util.function.Function;
 
 public class ComboState {
     public static final ResourceKey<Registry<ComboState>> REGISTRY_KEY = ResourceKey
-            .createRegistryKey(new ResourceLocation(SlashBlade.MODID, "combo_state"));
+            .createRegistryKey(ResourceLocation.fromNamespaceAndPath(SlashBlade.MODID, "combo_state"));
 
     private final ResourceLocation motionLoc;
 
@@ -105,7 +107,7 @@ public class ComboState {
     }
 
     public static ResourceLocation getRegistryKey(ComboState state) {
-        return ComboStateRegistry.REGISTRY.get().getKey(state);
+        return ComboStateRegistry.REGISTRY.getKey(state);
     }
 
     private ComboState(Builder builder) {
@@ -146,7 +148,7 @@ public class ComboState {
 
     @Nonnull
     public ComboState checkTimeOut(LivingEntity living, float msec) {
-        return this.getTimeoutMS() < msec ? Objects.requireNonNull(ComboStateRegistry.REGISTRY.get().getValue(this.nextOfTimeout.apply(living)))
+        return this.getTimeoutMS() < msec ? Objects.requireNonNull(ComboStateRegistry.REGISTRY.get(this.nextOfTimeout.apply(living)))
                 : this;
     }
 
@@ -159,9 +161,11 @@ public class ComboState {
     }
 
     static public SlashArts.ArtsType releaseActionQuickCharge(LivingEntity user, Integer elapsed) {
-        int level = EnchantmentHelper.getEnchantmentLevel(Enchantments.SOUL_SPEED, user);
+        var enchLookup = user.registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
+        var soulSpeed = enchLookup.getOrThrow(Enchantments.SOUL_SPEED);
+        int level = EnchantmentHelper.getEnchantmentLevel(soulSpeed, user);
         if (elapsed <= 3 + level) {
-            AdvancementHelper.grantedIf(Enchantments.SOUL_SPEED, user);
+            AdvancementHelper.grantedIf(soulSpeed.value(), user);
             AdvancementHelper.grantCriterion(user, AdvancementHelper.ADVANCEMENT_QUICK_CHARGE);
             return SlashArts.ArtsType.Jackpot;
         } else {
@@ -191,14 +195,19 @@ public class ComboState {
             if (timeout <= elapsed) {
                 return next.apply(livingEntity);
             } else {
-                return livingEntity.getMainHandItem().getCapability(ItemSlashBlade.BLADESTATE)
+                return BladeStateAccess.of(livingEntity.getMainHandItem())
                         .map(ISlashBladeState::getComboSeq).orElse(SlashBlade.prefix("none"));
             }
         }
     }
 
     public static class TimeLineTickAction implements Consumer<LivingEntity> {
-        long offset = -1;
+        private final Map<LivingEntity, TimelineState> states = new WeakHashMap<>();
+
+        private static class TimelineState {
+            long offset = -1;
+            long lastProcessed = Long.MIN_VALUE;
+        }
 
         public static TimeLineTickActionBuilder getBuilder() {
             return new TimeLineTickActionBuilder();
@@ -227,15 +236,22 @@ public class ComboState {
         @Override
         public void accept(LivingEntity livingEntity) {
             long elapsed = getElapsed(livingEntity);
+            TimelineState state = states.computeIfAbsent(livingEntity, key -> new TimelineState());
 
-            if (offset < 0) {
-                offset = elapsed;
+            if (state.offset < 0) {
+                state.offset = elapsed;
             }
-            long adjustElapsed = elapsed -= offset;
+            long adjustElapsed = elapsed - state.offset;
             if (adjustElapsed < 0) {
-                offset = elapsed;
+                state.offset = elapsed;
+                state.lastProcessed = Long.MIN_VALUE;
                 adjustElapsed = 0;
             }
+
+            if (state.lastProcessed == adjustElapsed) {
+                return;
+            }
+            state.lastProcessed = adjustElapsed;
 
             Consumer<LivingEntity> action = timeLine.getOrDefault((int) adjustElapsed, this::defaultConsumer);
 
@@ -247,7 +263,7 @@ public class ComboState {
     }
 
     public static long getElapsed(LivingEntity livingEntity) {
-        return livingEntity.getMainHandItem().getCapability(ItemSlashBlade.BLADESTATE)
+        return BladeStateAccess.of(livingEntity.getMainHandItem())
                 .map((state) -> state.getElapsedTime(livingEntity)).orElse(0L);
     }
 

@@ -7,8 +7,8 @@ import mezz.jei.api.recipe.category.extensions.vanilla.smithing.IExtendableSmith
 import mezz.jei.api.registration.ISubtypeRegistration;
 import mezz.jei.api.registration.IVanillaCategoryExtensionRegistration;
 import mods.flammpfeil.slashblade.SlashBlade;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import mods.flammpfeil.slashblade.capability.slashblade.ISlashBladeState;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.recipe.SlashBladeSmithingRecipe;
 import mods.flammpfeil.slashblade.registry.SlashBladeItems;
 import net.minecraft.resources.ResourceLocation;
@@ -25,18 +25,11 @@ public class JEICompat implements IModPlugin {
 
     @Override
     public void registerItemSubtypes(ISubtypeRegistration registration) {
-        registration.registerSubtypeInterpreter(SlashBladeItems.SLASHBLADE.get(), JEICompat::syncSlashBlade);
+        registration.registerSubtypeInterpreter(SlashBladeItems.SLASHBLADE.get(), SlashBladeSubtypeInterpreter.INSTANCE);
     }
 
     public static String syncSlashBlade(ItemStack stack, UidContext context) {
-        // 同步nbt到Cap
-        stack.getCapability(ItemSlashBlade.BLADESTATE).ifPresent(cap -> {
-            if (stack.getOrCreateTag().contains("bladeState")) {
-                cap.deserializeNBT(stack.getOrCreateTag().getCompound("bladeState"));
-            }
-        });
-
-        return stack.getCapability(ItemSlashBlade.BLADESTATE).map(ISlashBladeState::getTranslationKey).orElse("");
+        return BladeStateAccess.of(stack).map(ISlashBladeState::getTranslationKey).orElse("");
     }
 
     @Override

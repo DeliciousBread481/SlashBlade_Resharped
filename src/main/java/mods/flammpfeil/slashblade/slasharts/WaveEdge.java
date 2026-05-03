@@ -1,10 +1,11 @@
 package mods.flammpfeil.slashblade.slasharts;
 
-import mods.flammpfeil.slashblade.SlashBlade;
-import mods.flammpfeil.slashblade.capability.concentrationrank.ConcentrationRankCapabilityProvider;
+import mods.flammpfeil.slashblade.RegistryEvents;
+import mods.flammpfeil.slashblade.capability.concentrationrank.CapabilityConcentrationRank;
+import mods.flammpfeil.slashblade.capability.concentrationrank.IConcentrationRank;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import mods.flammpfeil.slashblade.capability.slashblade.ISlashBladeState;
 import mods.flammpfeil.slashblade.entity.EntityDrive;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.util.KnockBacks;
 import mods.flammpfeil.slashblade.util.VectorHelper;
 import net.minecraft.util.Mth;
@@ -20,7 +21,7 @@ public class WaveEdge {
     public static void doSlash(LivingEntity playerIn, float roll, int lifetime, Vec3 centerOffset, boolean critical,
                                double damage, KnockBacks knockback, float minSpeed, float maxSpeed, int count) {
 
-        int colorCode = playerIn.getMainHandItem().getCapability(ItemSlashBlade.BLADESTATE)
+        int colorCode = BladeStateAccess.of(playerIn.getMainHandItem())
                 .map(ISlashBladeState::getColorCode).orElse(0xFF3333FF);
 
         doSlash(playerIn, roll, lifetime, colorCode, centerOffset, critical, damage, knockback, minSpeed, maxSpeed,
@@ -41,7 +42,7 @@ public class WaveEdge {
                 .add(VectorHelper.getVectorForRotation(0, playerIn.getViewYRot(0) + 90).scale(centerOffset.z))
                 .add(playerIn.getLookAngle().scale(centerOffset.z));
         for (int i = 0; i <= count; i += 1) {
-            EntityDrive drive = new EntityDrive(SlashBlade.RegistryEvents.Drive, playerIn.level());
+            EntityDrive drive = new EntityDrive(RegistryEvents.Drive, playerIn.level());
 
             playerIn.level().addFreshEntity(drive);
             float speed = Mth.randomBetween(drive.level().getRandom(), minSpeed, maxSpeed);
@@ -59,8 +60,10 @@ public class WaveEdge {
             drive.setKnockBack(knockback);
             drive.setLifetime(lifetime);
 
-            playerIn.getCapability(ConcentrationRankCapabilityProvider.RANK_POINT)
-                    .ifPresent(rank -> drive.setRank(rank.getRankLevel(playerIn.level().getGameTime())));
+            IConcentrationRank rank = playerIn.getData(CapabilityConcentrationRank.RANK_POINT.get());
+            if (rank != null) {
+                drive.setRank(rank.getRankLevel(playerIn.level().getGameTime()));
+            }
 
         }
     }

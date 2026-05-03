@@ -4,12 +4,11 @@ import mods.flammpfeil.slashblade.capability.slashblade.ISlashBladeState;
 import mods.flammpfeil.slashblade.event.SlashBladeEvent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.eventbus.api.Cancelable;
+import net.neoforged.bus.api.ICancellableEvent;
 
 import javax.annotation.Nullable;
 
-@Cancelable
-public class BladeChangeSpecialAttackEvent extends SlashBladeEvent {
+public class BladeChangeSpecialAttackEvent extends SlashBladeEvent implements ICancellableEvent {
     private ResourceLocation SAKey;
     private int shrinkCount = 0;
     private final SlashBladeEvent.BladeStandAttackEvent originalEvent;

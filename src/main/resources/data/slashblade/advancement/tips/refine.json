@@ -1,0 +1,20 @@
+{
+  "display": {
+    "title": {
+      "translate": "adv.slashblade.refine"
+    },
+    "description": {
+      "translate": "adv.slashblade.refine.desc"
+    },
+    "icon": {
+      "id": "minecraft:anvil"
+    },
+    "frame": "challenge"
+  },
+  "parent": "slashblade:tips/reforge",
+  "criteria": {
+    "customtrigger": {
+      "trigger": "minecraft:impossible"
+    }
+  }
+}

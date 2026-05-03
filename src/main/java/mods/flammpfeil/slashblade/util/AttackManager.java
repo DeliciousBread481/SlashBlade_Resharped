@@ -1,18 +1,21 @@
 package mods.flammpfeil.slashblade.util;
 
 import com.google.common.collect.Lists;
-import mods.flammpfeil.slashblade.SlashBlade;
+
+import mods.flammpfeil.slashblade.RegistryEvents;
 import mods.flammpfeil.slashblade.ability.ArrowReflector;
 import mods.flammpfeil.slashblade.ability.TNTExtinguisher;
-import mods.flammpfeil.slashblade.capability.concentrationrank.ConcentrationRankCapabilityProvider;
+import mods.flammpfeil.slashblade.capability.concentrationrank.CapabilityConcentrationRank;
+import mods.flammpfeil.slashblade.capability.concentrationrank.IConcentrationRank;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import mods.flammpfeil.slashblade.capability.slashblade.ISlashBladeState;
 import mods.flammpfeil.slashblade.entity.EntityAbstractSummonedSword;
 import mods.flammpfeil.slashblade.entity.EntitySlashEffect;
 import mods.flammpfeil.slashblade.entity.IShootable;
 import mods.flammpfeil.slashblade.event.SlashBladeEvent;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.registry.ModAttributes;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
@@ -24,9 +27,10 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.common.MinecraftForge;
+import net.neoforged.neoforge.common.NeoForge;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -38,10 +42,11 @@ public class AttackManager {
     public static boolean isPowered(LivingEntity entity) {
         ItemStack blade = entity.getMainHandItem();
         boolean result = entity.hasEffect(MobEffects.DAMAGE_BOOST) || entity.hasEffect(MobEffects.HUNGER);
-        if (blade.getCapability(ItemSlashBlade.BLADESTATE).isPresent()) {
-            var state = blade.getCapability(ItemSlashBlade.BLADESTATE).orElseThrow(NullPointerException::new);
+        var bladeState = BladeStateAccess.of(blade);
+        if (bladeState.isPresent()) {
+            var state = bladeState.orElseThrow(NullPointerException::new);
             var event = new SlashBladeEvent.PowerBladeEvent(blade, state, entity, result);
-            MinecraftForge.EVENT_BUS.post(event);
+            NeoForge.EVENT_BUS.post(event);
             result = event.isPowered();
         }
 
@@ -77,7 +82,7 @@ public class AttackManager {
     public static EntitySlashEffect doSlash(LivingEntity playerIn, float roll, Vec3 centerOffset, boolean mute,
                                             boolean critical, double comboRatio, KnockBacks knockback) {
 
-        int colorCode = playerIn.getMainHandItem().getCapability(ItemSlashBlade.BLADESTATE)
+        int colorCode = BladeStateAccess.of(playerIn.getMainHandItem())
                 .map(ISlashBladeState::getColorCode).orElse(0xFFFFFF);
 
         return doSlash(playerIn, roll, colorCode, centerOffset, mute, critical, comboRatio, knockback);
@@ -90,14 +95,14 @@ public class AttackManager {
             return null;
         }
         ItemStack blade = playerIn.getMainHandItem();
-        if (!blade.getCapability(ItemSlashBlade.BLADESTATE).isPresent()) {
+        if (!BladeStateAccess.of(blade).isPresent()) {
             return null;
         }
         SlashBladeEvent.DoSlashEvent event = new SlashBladeEvent.DoSlashEvent(blade,
-                blade.getCapability(ItemSlashBlade.BLADESTATE).orElseThrow(NullPointerException::new),
+                BladeStateAccess.of(blade).orElseThrow(NullPointerException::new),
                 playerIn, roll, critical, comboRatio, knockback);
 
-        if (MinecraftForge.EVENT_BUS.post(event)) {
+        if (NeoForge.EVENT_BUS.post(event).isCanceled()) {
             return null;
         }
         Vec3 pos = playerIn.position().add(0.0D, (double) playerIn.getEyeHeight() * 0.75D, 0.0D)
@@ -107,7 +112,7 @@ public class AttackManager {
                 .add(VectorHelper.getVectorForRotation(0, playerIn.getViewYRot(0) + 90).scale(centerOffset.z))
                 .add(playerIn.getLookAngle().scale(centerOffset.z));
 
-        EntitySlashEffect jc = new EntitySlashEffect(SlashBlade.RegistryEvents.SlashEffect, playerIn.level());
+        EntitySlashEffect jc = new EntitySlashEffect(RegistryEvents.SlashEffect, playerIn.level());
         jc.setPos(pos.x, pos.y, pos.z);
         jc.setOwner(event.getUser());
         jc.setRotationRoll(event.getRoll());
@@ -123,8 +128,10 @@ public class AttackManager {
 
         jc.setKnockBack(event.getKnockback());
 
-        playerIn.getCapability(ConcentrationRankCapabilityProvider.RANK_POINT)
-                .ifPresent(rank -> jc.setRank(rank.getRankLevel(playerIn.level().getGameTime())));
+        IConcentrationRank rank0 = playerIn.getData(CapabilityConcentrationRank.RANK_POINT.get());
+        if (rank0 != null) {
+            jc.setRank(rank0.getRankLevel(playerIn.level().getGameTime()));
+        }
 
         playerIn.level().addFreshEntity(jc);
 
@@ -149,8 +156,10 @@ public class AttackManager {
 
         jc.setKnockBack(KnockBacks.cancel);
 
-        living.getCapability(ConcentrationRankCapabilityProvider.RANK_POINT)
-                .ifPresent(rank -> jc.setRank(rank.getRankLevel(living.level().getGameTime())));
+        IConcentrationRank rank1 = living.getData(CapabilityConcentrationRank.RANK_POINT.get());
+        if (rank1 != null) {
+            jc.setRank(rank1.getRankLevel(living.level().getGameTime()));
+        }
 
         jc.setLifetime(36);
 
@@ -158,7 +167,7 @@ public class AttackManager {
     }
 
     public static @NotNull EntitySlashEffect newVoidSlashEffect(LivingEntity living, Vec3 pos) {
-        EntitySlashEffect jc = new EntitySlashEffect(SlashBlade.RegistryEvents.SlashEffect, living.level()) {
+        EntitySlashEffect jc = new EntitySlashEffect(RegistryEvents.SlashEffect, living.level()) {
 
             @Override
             public double getDamage() {
@@ -187,7 +196,8 @@ public class AttackManager {
                                         0.05D,
                                         Math.cos(yRot * (float) Math.PI / 180.0F) * 0.5));
                                 double baseAmount = living.getAttributeValue(Attributes.ATTACK_DAMAGE);
-                                int powerLevel = living.getMainHandItem().getEnchantmentLevel(Enchantments.POWER_ARROWS);
+                                var enchLookup = living.registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
+                                int powerLevel = EnchantmentHelper.getTagEnchantmentLevel(enchLookup.getOrThrow(Enchantments.PIERCING), living.getMainHandItem());
                                 baseAmount *= 1 + powerLevel * 0.1;
                                 baseAmount += AttackHelper.getRankBonus(living);
                                 if (this.getShooter() instanceof LivingEntity shooter) {
@@ -210,7 +220,7 @@ public class AttackManager {
         jc.setYRot(living.getYRot() - 22.5F);
         jc.setXRot(0);
 
-        int colorCode = living.getMainHandItem().getCapability(ItemSlashBlade.BLADESTATE)
+        int colorCode = BladeStateAccess.of(living.getMainHandItem())
                 .map(ISlashBladeState::getColorCode).orElse(0xFFFFFF);
         jc.setColor(colorCode);
 
@@ -284,7 +294,8 @@ public class AttackManager {
                 double baseAmount = owner.getDamage();
                 if (owner.getShooter() instanceof LivingEntity living) {
                     if (!(owner instanceof EntitySlashEffect)) {
-                        int powerLevel = living.getMainHandItem().getEnchantmentLevel(Enchantments.POWER_ARROWS);
+                        var enchLookup2 = living.registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
+                        int powerLevel = EnchantmentHelper.getTagEnchantmentLevel(enchLookup2.getOrThrow(Enchantments.PIERCING), living.getMainHandItem());
                         baseAmount += powerLevel * 0.1;
                     }
                     baseAmount *= living.getAttributeValue(Attributes.ATTACK_DAMAGE);
@@ -328,7 +339,7 @@ public class AttackManager {
 
     public static void doMeleeAttack(LivingEntity attacker, Entity target, boolean forceHit, boolean resetHit, float comboRatio) {
         doManagedAttack((t) ->
-                attacker.getMainHandItem().getCapability(ItemSlashBlade.BLADESTATE).ifPresent((state) -> {
+                BladeStateAccess.of(attacker.getMainHandItem()).ifPresent((state) -> {
                     try {
                         state.setOnClick(true);
                         AttackHelper.attack(attacker, t, comboRatio);
@@ -362,7 +373,7 @@ public class AttackManager {
     }
 
     public static float getSlashBladeDamageScale(LivingEntity entity) {
-        AttributeInstance attributeInstance = entity.getAttribute(ModAttributes.getSlashBladeDamage());
+        AttributeInstance attributeInstance = entity.getAttribute(ModAttributes.SLASHBLADE_DAMAGE);
         if (attributeInstance != null) {
             return (float) attributeInstance.getValue();
         }

@@ -7,20 +7,20 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import mods.flammpfeil.slashblade.SlashBlade;
-import mods.flammpfeil.slashblade.capability.slashblade.SlashBladeState;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
+
 import mods.flammpfeil.slashblade.item.SwordType;
 import mods.flammpfeil.slashblade.registry.slashblade.EnchantmentDefinition;
 import net.minecraft.Util;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.ForgeRegistries;
-
+import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
 public record RequestDefinition(ResourceLocation name, int proudSoulCount, int killCount, int refineCount,
                                 List<EnchantmentDefinition> enchantments, List<SwordType> defaultType) {
@@ -69,7 +69,7 @@ public record RequestDefinition(ResourceLocation name, int proudSoulCount, int k
     }
 
     public void initItemStack(ItemStack blade) {
-        var state = blade.getCapability(ItemSlashBlade.BLADESTATE).orElse(new SlashBladeState(blade));
+        var state = BladeStateAccess.of(blade).orElseThrow();
         state.setNonEmpty();
         if (!this.name.equals(SlashBlade.prefix("none"))) {
             state.setTranslationKey(getTranslationKey());
@@ -78,10 +78,6 @@ public record RequestDefinition(ResourceLocation name, int proudSoulCount, int k
         state.setKillCount(killCount());
         state.setRefine(refineCount());
 
-        this.enchantments()
-                .forEach(enchantment -> blade.enchant(
-                        ForgeRegistries.ENCHANTMENTS.getValue(enchantment.getEnchantmentID()),
-                        enchantment.getEnchantmentLevel()));
         this.defaultType.forEach(type -> {
             switch (type) {
                 case BEWITCHED -> state.setDefaultBewitched(true);
@@ -95,18 +91,17 @@ public record RequestDefinition(ResourceLocation name, int proudSoulCount, int k
             }
         });
 
-        blade.getOrCreateTag().put("bladeState", state.serializeNBT());
     }
-
 
     public boolean test(ItemStack blade) {
         if (blade == null || blade.isEmpty()) {
             return false;
         }
-        if (!blade.getCapability(ItemSlashBlade.BLADESTATE).isPresent()) {
+        
+        if (!BladeStateAccess.of(blade).isPresent()) {
             return false;
         }
-        var state = blade.getCapability(ItemSlashBlade.BLADESTATE).orElseThrow(NullPointerException::new);
+        var state = BladeStateAccess.of(blade).orElseThrow(NullPointerException::new);
         boolean nameCheck;
         if (this.name.equals(SlashBlade.prefix("none"))) {
             nameCheck = state.getTranslationKey().isBlank();
@@ -117,11 +112,19 @@ public record RequestDefinition(ResourceLocation name, int proudSoulCount, int k
         boolean killCheck = state.getKillCount() >= this.killCount();
         boolean refineCheck = state.getRefine() >= this.refineCount();
 
+        var itemEnchants = EnchantmentHelper.getEnchantmentsForCrafting(blade);
         for (var enchantment : this.enchantments()) {
-            if (blade.getEnchantmentLevel(ForgeRegistries.ENCHANTMENTS
-                    .getValue(enchantment.getEnchantmentID())) < enchantment.getEnchantmentLevel()) {
-                return false;
+            var enchId = enchantment.getEnchantmentID();
+            var requiredLevel = enchantment.getEnchantmentLevel();
+            boolean found = false;
+            for (var entry : itemEnchants.entrySet()) {
+                if (entry.getKey().is(ResourceKey.create(Registries.ENCHANTMENT, enchId))
+                        && entry.getIntValue() >= requiredLevel) {
+                    found = true;
+                    break;
+                }
             }
+            if (!found) return false;
         }
 
         boolean types = SwordType.from(blade).containsAll(this.defaultType());

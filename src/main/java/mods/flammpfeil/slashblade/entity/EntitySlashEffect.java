@@ -2,7 +2,6 @@ package mods.flammpfeil.slashblade.entity;
 
 import com.google.common.collect.Lists;
 import com.mojang.math.Axis;
-import mods.flammpfeil.slashblade.SlashBlade;
 import mods.flammpfeil.slashblade.capability.concentrationrank.IConcentrationRank;
 import mods.flammpfeil.slashblade.event.handler.FallHandler;
 import mods.flammpfeil.slashblade.util.AttackManager;
@@ -16,6 +15,7 @@ import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerEntity;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -24,21 +24,19 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
-import net.minecraft.world.item.alchemy.PotionUtils;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.network.NetworkHooks;
-import net.minecraftforge.network.PlayMessages;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Vector4f;
 
 import javax.annotation.Nullable;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -101,20 +99,16 @@ public class EntitySlashEffect extends Projectile implements IShootable {
         // this.setGlowing(true);
     }
 
-    public static EntitySlashEffect createInstance(PlayMessages.SpawnEntity packet, Level worldIn) {
-        return new EntitySlashEffect(SlashBlade.RegistryEvents.SlashEffect, worldIn);
-    }
-
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-        this.entityData.define(COLOR, 0x3333FF);
-        this.entityData.define(FLAGS, 0);
-        this.entityData.define(RANK, 0.0f);
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(COLOR, 0x3333FF);
+        builder.define(FLAGS, 0);
+        builder.define(RANK, 0.0f);
 
-        this.entityData.define(ROTATION_OFFSET, 0.0f);
-        this.entityData.define(ROTATION_ROLL, 0.0f);
-        this.entityData.define(BASESIZE, 1.0f);
+        builder.define(ROTATION_OFFSET, 0.0f);
+        builder.define(ROTATION_ROLL, 0.0f);
+        builder.define(BASESIZE, 1.0f);
     }
 
     @Override
@@ -141,8 +135,8 @@ public class EntitySlashEffect extends Projectile implements IShootable {
     }
 
     @Override
-    public @NotNull Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
+    public @NotNull Packet<ClientGamePacketListener> getAddEntityPacket(ServerEntity entity) {
+        return super.getAddEntityPacket(entity);
     }
 
     public boolean isWave() {
@@ -170,8 +164,7 @@ public class EntitySlashEffect extends Projectile implements IShootable {
 
     @Override
     @OnlyIn(Dist.CLIENT)
-    public void lerpTo(double x, double y, double z, float yaw, float pitch, int posRotationIncrements,
-                       boolean teleport) {
+    public void lerpTo(double x, double y, double z, float yaw, float pitch, int steps) {
         this.setPos(x, y, z);
         this.setRot(yaw, pitch);
     }
@@ -274,7 +267,7 @@ public class EntitySlashEffect extends Projectile implements IShootable {
     }
 
     public SoundEvent getSlashSound() {
-        return SoundEvents.TRIDENT_THROW;
+        return SoundEvents.TRIDENT_THROW.value();
     }
 
     @Override
@@ -314,7 +307,7 @@ public class EntitySlashEffect extends Projectile implements IShootable {
             Vec3 normal3d = new Vec3(normal.x(), normal.y(), normal.z());
 
             BlockHitResult rayResult = this.getCommandSenderWorld().clip(new ClipContext(start.add(normal3d.scale(1.5)),
-                    start.add(normal3d.scale(3)), ClipContext.Block.COLLIDER, ClipContext.Fluid.ANY, null));
+                    start.add(normal3d.scale(3)), ClipContext.Block.COLLIDER, ClipContext.Fluid.ANY, this));
 
             if (getShooter() != null && !getShooter().isInWaterOrRain()
                     && rayResult.getType() == HitResult.Type.BLOCK) {
@@ -436,7 +429,14 @@ public class EntitySlashEffect extends Projectile implements IShootable {
     }
 
     public List<MobEffectInstance> getPotionEffects() {
-        List<MobEffectInstance> effects = PotionUtils.getAllEffects(this.getPersistentData());
+        List<MobEffectInstance> effects = new ArrayList<>();
+        CompoundTag data = this.getPersistentData();
+        if (data.contains("CustomPotionEffects", 9)) {
+            var list = data.getList("CustomPotionEffects", 10);
+            for (int i = 0; i < list.size(); i++) {
+                effects.add(MobEffectInstance.load(list.getCompound(i)));
+            }
+        }
 
         if (effects.isEmpty()) {
             effects.add(new MobEffectInstance(MobEffects.POISON, 1, 1));

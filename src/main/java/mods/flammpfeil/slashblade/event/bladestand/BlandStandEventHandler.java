@@ -4,16 +4,20 @@ import mods.flammpfeil.slashblade.SlashBlade;
 import mods.flammpfeil.slashblade.data.builtin.SlashBladeBuiltInRegistry;
 import mods.flammpfeil.slashblade.data.tag.SlashBladeItemTags;
 import mods.flammpfeil.slashblade.entity.BladeStandEntity;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import mods.flammpfeil.slashblade.event.SlashBladeEvent;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.recipe.RequestDefinition;
 import mods.flammpfeil.slashblade.recipe.SlashBladeIngredient;
 import mods.flammpfeil.slashblade.registry.SlashArtsRegistry;
 import mods.flammpfeil.slashblade.registry.SlashBladeItems;
 import mods.flammpfeil.slashblade.registry.SpecialEffectsRegistry;
+import net.minecraft.core.Holder;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -27,19 +31,17 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.common.NeoForge;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-@EventBusSubscriber()
+@EventBusSubscriber(modid = SlashBlade.MODID)
 public class BlandStandEventHandler {
     @SubscribeEvent
     public static void eventKoseki(SlashBladeEvent.BladeStandAttackEvent event) {
@@ -57,7 +59,9 @@ public class BlandStandEventHandler {
         if (!in.test(event.getBlade())) {
             return;
         }
-        event.getBladeStand().setItem(Objects.requireNonNull(slashBladeDefinitionRegistry.get(SlashBladeBuiltInRegistry.KOSEKI)).getBlade());
+        event.getBladeStand().setItem(Objects.requireNonNull(
+        		slashBladeDefinitionRegistry.get(SlashBladeBuiltInRegistry.KOSEKI))
+        		.getBlade(event.getBladeStand().registryAccess()));
         event.setCanceled(true);
     }
 
@@ -77,15 +81,11 @@ public class BlandStandEventHandler {
         var world = player.level();
         var state = event.getSlashBladeState();
 
-        if (stack.getTag() == null) {
-            return;
-        }
-
-        CompoundTag tag = stack.getTag();
+        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         if (tag.contains("SpecialEffectType")) {
             var bladeStand = event.getBladeStand();
-            ResourceLocation SEKey = new ResourceLocation(tag.getString("SpecialEffectType"));
-            if (!(SpecialEffectsRegistry.REGISTRY.get().containsKey(SEKey))) {
+            ResourceLocation SEKey = ResourceLocation.parse(tag.getString("SpecialEffectType"));
+            if (!SpecialEffectsRegistry.REGISTRY.containsKey(SEKey)) {
                 return;
             }
             if (state.hasSpecialEffect(SEKey)) {
@@ -99,7 +99,7 @@ public class BlandStandEventHandler {
                 e.setShrinkCount(1);
             }
 
-            MinecraftForge.EVENT_BUS.post(e);
+            NeoForge.EVENT_BUS.post(e);
             if (e.isCanceled()) {
                 return;
             }
@@ -126,20 +126,20 @@ public class BlandStandEventHandler {
             return;
         }
         ItemStack stack = player.getItemInHand(InteractionHand.MAIN_HAND);
-        CompoundTag tag = stack.getTag();
+        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
 
-        if (!stack.is(SlashBladeItemTags.CAN_CHANGE_SA) || tag == null || !tag.contains("SpecialAttackType")) {
+        if (!stack.is(SlashBladeItemTags.CAN_CHANGE_SA) || !tag.contains("SpecialAttackType")) {
             return;
         }
 
-        ResourceLocation SAKey = new ResourceLocation(tag.getString("SpecialAttackType"));
-        if (!SlashArtsRegistry.REGISTRY.get().containsKey(SAKey)) {
+        ResourceLocation SAKey = ResourceLocation.parse(tag.getString("SpecialAttackType"));
+        if (!SlashArtsRegistry.REGISTRY.containsKey(SAKey)) {
             return;
         }
 
         ItemStack blade = event.getBlade();
 
-        blade.getCapability(ItemSlashBlade.BLADESTATE).ifPresent(state -> {
+        BladeStateAccess.of(blade).ifPresent(state -> {
             if (!SAKey.equals(state.getSlashArtsKey())) {
 
                 BladeChangeSpecialAttackEvent e = new BladeChangeSpecialAttackEvent(
@@ -149,7 +149,7 @@ public class BlandStandEventHandler {
                     e.setShrinkCount(1);
                 }
 
-                MinecraftForge.EVENT_BUS.post(e);
+                NeoForge.EVENT_BUS.post(e);
                 if (e.isCanceled()) {
                     return;
                 }
@@ -185,8 +185,7 @@ public class BlandStandEventHandler {
             return;
         }
 
-        CompoundTag crystalTag = stack.getTag();
-        if (crystalTag != null && crystalTag.contains("SpecialEffectType")) {
+        if (stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().contains("SpecialEffectType")) {
             return;
         }
 
@@ -201,19 +200,20 @@ public class BlandStandEventHandler {
         var specialEffects = state.getSpecialEffects();
 
         for (var se : specialEffects) {
-            if (!SpecialEffectsRegistry.REGISTRY.get().containsKey(se)) {
+            if (!SpecialEffectsRegistry.REGISTRY.containsKey(se)) {
                 continue;
             }
 
+            var specialEffect = Objects.requireNonNull(SpecialEffectsRegistry.REGISTRY.get(se));
+
             PreCopySpecialEffectFromBladeEvent pe = new PreCopySpecialEffectFromBladeEvent(
-                    blade, state, se, event, Objects.requireNonNull(SpecialEffectsRegistry.REGISTRY.get().getValue(se)).isRemovable(),
-                    Objects.requireNonNull(SpecialEffectsRegistry.REGISTRY.get().getValue(se)).isCopiable());
+                    blade, state, se, event, specialEffect.isRemovable(), specialEffect.isCopiable());
 
             if (!player.isCreative()) {
                 pe.setShrinkCount(1);
             }
 
-            MinecraftForge.EVENT_BUS.post(pe);
+            NeoForge.EVENT_BUS.post(pe);
             if (pe.isCanceled()) {
                 return;
             }
@@ -229,7 +229,7 @@ public class BlandStandEventHandler {
             ItemStack orb = new ItemStack(SlashBladeItems.PROUDSOUL_CRYSTAL.get());
             CompoundTag tag = new CompoundTag();
             tag.putString("SpecialEffectType", se.toString());
-            orb.setTag(tag);
+            orb.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
 
             stack.shrink(pe.getShrinkCount());
 
@@ -246,7 +246,7 @@ public class BlandStandEventHandler {
             CopySpecialEffectFromBladeEvent e = new CopySpecialEffectFromBladeEvent(
                     pe, orb, itemEntity);
 
-            MinecraftForge.EVENT_BUS.post(e);
+            NeoForge.EVENT_BUS.post(e);
 
             event.setCanceled(true);
             return;
@@ -284,7 +284,7 @@ public class BlandStandEventHandler {
                 pe.setShrinkCount(1);
             }
 
-            MinecraftForge.EVENT_BUS.post(pe);
+            NeoForge.EVENT_BUS.post(pe);
             if (pe.isCanceled()) {
                 return;
             }
@@ -296,7 +296,7 @@ public class BlandStandEventHandler {
             ItemStack orb = new ItemStack(SlashBladeItems.PROUDSOUL_SPHERE.get());
             CompoundTag tag = new CompoundTag();
             tag.putString("SpecialAttackType", state.getSlashArtsKey().toString());
-            orb.setTag(tag);
+            orb.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
 
             stack.shrink(pe.getShrinkCount());
 
@@ -309,7 +309,7 @@ public class BlandStandEventHandler {
             CopySpecialAttackFromBladeEvent e = new CopySpecialAttackFromBladeEvent(
                     pe, orb, itemEntity);
 
-            MinecraftForge.EVENT_BUS.post(e);
+            NeoForge.EVENT_BUS.post(e);
 
             event.setCanceled(true);
         }
@@ -342,19 +342,21 @@ public class BlandStandEventHandler {
         var world = player.level();
         var random = world.getRandom();
         var bladeStand = event.getBladeStand();
-        Map<Enchantment, Integer> currentBladeEnchantments = blade.getAllEnchantments();
-        Map<Enchantment, Integer> enchantments = new HashMap<>();
+        var enchantmentLookup = player.registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
+        ItemEnchantments.Mutable enchantments = new ItemEnchantments.Mutable(EnchantmentHelper.getEnchantmentsForCrafting(blade));
+        boolean[] hasEnchantmentChanges = {false};
 
         AtomicInteger totalShrinkCount = new AtomicInteger(0);
         if (!player.isCreative()) {
             totalShrinkCount.set(1);
         }
-        stack.getAllEnchantments().forEach((enchantment, level) -> {
+        for (var entry : stack.getAllEnchantments(enchantmentLookup).entrySet()) {
+            Holder<Enchantment> enchantment = entry.getKey();
             if (event.isCanceled()) {
-                return;
+                continue;
             }
-            if (!blade.canApplyAtEnchantingTable(enchantment)) {
-                return;
+            if (!blade.supportsEnchantment(enchantment)) {
+                continue;
             }
 
             var probability = 1.0F;
@@ -368,35 +370,35 @@ public class BlandStandEventHandler {
                 probability = 0.75F;
             }
 
-            int enchantLevel = Math.min(enchantment.getMaxLevel(),
+            int enchantLevel = Math.min(enchantment.value().getMaxLevel(),
                     EnchantmentHelper.getTagEnchantmentLevel(enchantment, blade) + 1);
 
             ProudSoulEnchantmentEvent e = new ProudSoulEnchantmentEvent(
                     blade, event.getSlashBladeState(), enchantment, enchantLevel, false, probability,
                     totalShrinkCount.get(), event);
 
-            MinecraftForge.EVENT_BUS.post(e);
+            NeoForge.EVENT_BUS.post(e);
             if (e.isCanceled()) {
                 return;
             }
 
             totalShrinkCount.set(e.getTotalShrinkCount());
 
-            enchantments.put(e.getEnchantment(), e.getEnchantLevel());
+            enchantments.set(e.getEnchantment(), e.getEnchantLevel());
+            hasEnchantmentChanges[0] = true;
 
             if (!e.willTryNextEnchant()) {
                 event.setCanceled(true);
             }
-        });
+        }
 
         if (stack.getCount() < totalShrinkCount.get()) {
             return;
         }
         stack.shrink(totalShrinkCount.get());
 
-        currentBladeEnchantments.putAll(enchantments);
-        EnchantmentHelper.setEnchantments(currentBladeEnchantments, blade);
-        if (!enchantments.isEmpty()) {
+        EnchantmentHelper.setEnchantments(blade, enchantments.toImmutable());
+        if (hasEnchantmentChanges[0]) {
             spawnSucceedEffects(world, bladeStand, random);
         }
 
@@ -410,16 +412,17 @@ public class BlandStandEventHandler {
         if (oriEvent == null) {
             return;
         }
-        Player player = (Player) oriEvent.getDamageSource().getEntity();
-        if (player != null) {
+        if (oriEvent.getDamageSource().getEntity() instanceof Player player) {
             ItemStack stack = player.getItemInHand(InteractionHand.MAIN_HAND);
-
             ItemStack blade = event.getBlade();
-            Set<Enchantment> enchantments = EnchantmentHelper.getEnchantments(stack).keySet();
+            var enchantmentLookup = player.registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
+
             boolean flag = false;
-            for (Enchantment e : enchantments) {
-                if (EnchantmentHelper.getTagEnchantmentLevel(e, blade) >= e.getMaxLevel()) {
+            for (var entry : stack.getAllEnchantments(enchantmentLookup).entrySet()) {
+                Holder<Enchantment> enchantment = entry.getKey();
+                if (EnchantmentHelper.getTagEnchantmentLevel(enchantment, blade) >= enchantment.value().getMaxLevel()) {
                     flag = true;
+                    break;
                 }
             }
             if (!flag) {

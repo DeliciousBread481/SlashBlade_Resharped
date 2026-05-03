@@ -2,7 +2,7 @@ package mods.flammpfeil.slashblade.ability;
 
 import mods.flammpfeil.slashblade.SlashBlade;
 import mods.flammpfeil.slashblade.event.handler.InputCommandEvent;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import mods.flammpfeil.slashblade.registry.ComboStateRegistry;
 import mods.flammpfeil.slashblade.util.AdvancementHelper;
 import mods.flammpfeil.slashblade.util.InputCommand;
@@ -14,16 +14,16 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.ai.targeting.TargetingConditions;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.neoforged.bus.api.SubscribeEvent;
 
 import java.util.EnumSet;
 
@@ -40,13 +40,13 @@ public class KickJump {
     }
 
     public void register() {
-        MinecraftForge.EVENT_BUS.register(this);
+        NeoForge.EVENT_BUS.register(this);
     }
 
     static final TargetingConditions tc = new TargetingConditions(false).ignoreLineOfSight()
             .ignoreInvisibilityTesting();
 
-    static public final ResourceLocation ADVANCEMENT_KICK_JUMP = new ResourceLocation(SlashBlade.MODID,
+    static public final ResourceLocation ADVANCEMENT_KICK_JUMP = ResourceLocation.fromNamespaceAndPath(SlashBlade.MODID,
             "abilities/kick_jump");
 
     static public final String KEY_KICKJUMP = "sb.kickjump";
@@ -107,7 +107,7 @@ public class KickJump {
         AdvancementHelper.grantCriterion(sender, ADVANCEMENT_KICK_JUMP);
         sender.playNotifySound(SoundEvents.PLAYER_SMALL_FALL, SoundSource.PLAYERS, 0.5f, 1.2f);
 
-        sender.getMainHandItem().getCapability(ItemSlashBlade.BLADESTATE).ifPresent(s -> s.updateComboSeq(sender, ComboStateRegistry.NONE.getId()));
+        BladeStateAccess.of(sender.getMainHandItem()).ifPresent(s -> s.updateComboSeq(sender, ComboStateRegistry.NONE.getId()));
 
         if (worldIn instanceof ServerLevel) {
             ((ServerLevel) worldIn).sendParticles(
@@ -117,20 +117,18 @@ public class KickJump {
     }
 
     @SubscribeEvent
-    public void onTick(TickEvent.PlayerTickEvent event) {
-        if (event.phase == TickEvent.Phase.START) {
-            LivingEntity player = event.player;
-            // cooldown
-            if (player.onGround() && 0 < player.getPersistentData().getInt(KEY_KICKJUMP)) {
+    public void onTick(PlayerTickEvent.Pre event) {
+        Player player = event.getEntity();
+        // cooldown
+        if (player.onGround() && 0 < player.getPersistentData().getInt(KEY_KICKJUMP)) {
 
-                int count = player.getPersistentData().getInt(KEY_KICKJUMP);
-                count--;
+            int count = player.getPersistentData().getInt(KEY_KICKJUMP);
+            count--;
 
-                if (count <= 0) {
-                    player.getPersistentData().remove(KEY_KICKJUMP);
-                } else {
-                    player.getPersistentData().putInt(KEY_KICKJUMP, count);
-                }
+            if (count <= 0) {
+                player.getPersistentData().remove(KEY_KICKJUMP);
+            } else {
+                player.getPersistentData().putInt(KEY_KICKJUMP, count);
             }
         }
     }

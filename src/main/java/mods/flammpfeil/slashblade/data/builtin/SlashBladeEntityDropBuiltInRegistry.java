@@ -2,7 +2,7 @@ package mods.flammpfeil.slashblade.data.builtin;
 
 import mods.flammpfeil.slashblade.SlashBlade;
 import mods.flammpfeil.slashblade.event.drop.EntityDropEntry;
-import net.minecraft.data.worldgen.BootstapContext;
+import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.phys.Vec3;
@@ -17,23 +17,23 @@ public class SlashBladeEntityDropBuiltInRegistry {
     public static final ResourceKey<EntityDropEntry> NAGA_AGITO = register("naga_agito");
     public static final ResourceKey<EntityDropEntry> HYDRA_OROTIAGITO = register("hydra_orotiagito");
 
-    public static void registerAll(BootstapContext<EntityDropEntry> bootstrap) {
-        bootstrap.register(ENDER_DRAGON_YAMATO, new EntityDropEntry(new ResourceLocation("minecraft", "ender_dragon"),
+    public static void registerAll(BootstrapContext<EntityDropEntry> bootstrap) {
+        bootstrap.register(ENDER_DRAGON_YAMATO, new EntityDropEntry(ResourceLocation.fromNamespaceAndPath("minecraft", "ender_dragon"),
                 SlashBlade.prefix("yamato_broken"), 1.0F, false, true, new Vec3(0F, 60F, 0F)));
 
-        bootstrap.register(WITHER_SANGE, new EntityDropEntry(new ResourceLocation("minecraft", "wither"),
+        bootstrap.register(WITHER_SANGE, new EntityDropEntry(ResourceLocation.fromNamespaceAndPath("minecraft", "wither"),
                 SlashBlade.prefix("sange"), 0.3F, true));
 
-        bootstrap.register(MINOTAUR_YASHA, new EntityDropEntry(new ResourceLocation("twilightforest", "minotaur"),
+        bootstrap.register(MINOTAUR_YASHA, new EntityDropEntry(ResourceLocation.fromNamespaceAndPath("twilightforest", "minotaur"),
                 SlashBlade.prefix("yasha"), 0.05F, true));
 
         bootstrap.register(MINOSHROOM_YASHA_TRUE, new EntityDropEntry(
-                new ResourceLocation("twilightforest", "minoshroom"), SlashBlade.prefix("yasha_true"), 0.2F, true));
+                ResourceLocation.fromNamespaceAndPath("twilightforest", "minoshroom"), SlashBlade.prefix("yasha_true"), 0.2F, true));
 
-        bootstrap.register(NAGA_AGITO, new EntityDropEntry(new ResourceLocation("twilightforest", "naga"),
+        bootstrap.register(NAGA_AGITO, new EntityDropEntry(ResourceLocation.fromNamespaceAndPath("twilightforest", "naga"),
                 SlashBlade.prefix("agito_rust"), 0.3F, false));
 
-        bootstrap.register(HYDRA_OROTIAGITO, new EntityDropEntry(new ResourceLocation("twilightforest", "hydra"),
+        bootstrap.register(HYDRA_OROTIAGITO, new EntityDropEntry(ResourceLocation.fromNamespaceAndPath("twilightforest", "hydra"),
                 SlashBlade.prefix("orotiagito_rust"), 0.3F, false));
     }
 

@@ -8,7 +8,7 @@ import net.minecraft.data.tags.EntityTypeTagsProvider;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.EntityType;
-import net.minecraftforge.common.data.ExistingFileHelper;
+import net.neoforged.neoforge.common.data.ExistingFileHelper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -25,10 +25,10 @@ public class SlashBladeEntityTypeTagProvider extends EntityTypeTagsProvider {
     protected void addTags(@NotNull Provider lookupProvider) {
         this.tag(EntityTypeTags.ATTACKABLE_BLACKLIST)
                 .add(EntityType.VILLAGER)
-                .addOptional(new ResourceLocation("touhou_little_maid", "maid"));
+                .addOptional(ResourceLocation.fromNamespaceAndPath("touhou_little_maid", "maid"));
 
         this.tag(EntityTypeTags.RENDER_LAYER_BLACKLIST)
-                .addOptional(new ResourceLocation("touhou_little_maid", "maid"));
+                .addOptional(ResourceLocation.fromNamespaceAndPath("touhou_little_maid", "maid"));
     }
 
     public static class EntityTypeTags {

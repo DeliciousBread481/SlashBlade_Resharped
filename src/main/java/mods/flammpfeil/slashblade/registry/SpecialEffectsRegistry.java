@@ -3,18 +3,17 @@ package mods.flammpfeil.slashblade.registry;
 import mods.flammpfeil.slashblade.SlashBlade;
 import mods.flammpfeil.slashblade.registry.specialeffects.SpecialEffect;
 import mods.flammpfeil.slashblade.registry.specialeffects.WitherEdge;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.IForgeRegistry;
-import net.minecraftforge.registries.RegistryBuilder;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import net.neoforged.neoforge.registries.DeferredHolder;
 
-import java.util.function.Supplier;
+import net.minecraft.core.Registry;
+import net.neoforged.neoforge.registries.RegistryBuilder;
 
 public class SpecialEffectsRegistry {
     public static final DeferredRegister<SpecialEffect> SPECIAL_EFFECT = DeferredRegister.create(SpecialEffect.REGISTRY_KEY,
             SlashBlade.MODID);
 
-    public static final Supplier<IForgeRegistry<SpecialEffect>> REGISTRY = SPECIAL_EFFECT.makeRegistry(RegistryBuilder::new);
-    public static final RegistryObject<SpecialEffect> WITHER_EDGE = SPECIAL_EFFECT.register("wither_edge",
+    public static final Registry<SpecialEffect> REGISTRY = new RegistryBuilder<>(SpecialEffect.REGISTRY_KEY).create();
+    public static final DeferredHolder<SpecialEffect, SpecialEffect> WITHER_EDGE = SPECIAL_EFFECT.register("wither_edge",
             WitherEdge::new);
 }

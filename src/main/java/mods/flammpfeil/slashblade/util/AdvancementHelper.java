@@ -1,14 +1,16 @@
 package mods.flammpfeil.slashblade.util;
 
 import mods.flammpfeil.slashblade.SlashBlade;
-import net.minecraft.advancements.Advancement;
+import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.advancements.AdvancementProgress;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.enchantment.Enchantment;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 
 public class AdvancementHelper {
 
@@ -36,9 +38,9 @@ public class AdvancementHelper {
 
     public static void grantCriterion(ServerPlayer player, ResourceLocation resourcelocation) {
         MinecraftServer server = player.getServer();
-        Advancement adv = null;
+        AdvancementHolder adv = null;
         if (server != null) {
-            adv = server.getAdvancements().getAdvancement(resourcelocation);
+            adv = server.getAdvancements().get(resourcelocation);
         }
         if (adv == null) {
             return;
@@ -57,10 +59,12 @@ public class AdvancementHelper {
     static final ResourceLocation EXEFFECT_ENCHANTMENT = SlashBlade.prefix("enchantment/");
 
     static public void grantedIf(Enchantment enchantment, LivingEntity owner) {
-        int level = owner.getMainHandItem().getEnchantmentLevel(enchantment);
+        var enchRegistry = owner.level().registryAccess().registryOrThrow(Registries.ENCHANTMENT);
+        var enchHolder = enchRegistry.getResourceKey(enchantment).flatMap(enchRegistry::getHolder);
+        int level = enchHolder.map(h -> EnchantmentHelper.getTagEnchantmentLevel(h, owner.getMainHandItem())).orElse(0);
         if (0 < level) {
             grantCriterion(owner, EXEFFECT_ENCHANTMENT.withSuffix("root"));
-            ResourceLocation enchantmentsKey = ForgeRegistries.ENCHANTMENTS.getKey(enchantment);
+            ResourceLocation enchantmentsKey = enchRegistry.getResourceKey(enchantment).map(ResourceKey::location).orElse(null);
             if (enchantmentsKey != null) {
                 grantCriterion(owner,
                         EXEFFECT_ENCHANTMENT.withSuffix(enchantmentsKey.getPath()));

@@ -4,10 +4,10 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import mods.flammpfeil.slashblade.client.renderer.model.BladeModelManager;
 import mods.flammpfeil.slashblade.client.renderer.model.obj.WavefrontObject;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import mods.flammpfeil.slashblade.client.renderer.util.BladeRenderState;
 import mods.flammpfeil.slashblade.client.renderer.util.MSAutoCloser;
 import mods.flammpfeil.slashblade.entity.BladeItemEntity;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.item.SwordType;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
@@ -25,41 +25,31 @@ public class BladeItemEntityRenderer extends ItemEntityRenderer {
     }
 
     @Override
-    public boolean shouldSpreadItems() {
-        return false;
-    }
-
-    @Override
-    public boolean shouldBob() {
-        return false;
-    }
-
-    @Override
-    public void render(ItemEntity itemIn, float entityYaw, float partialTicks, @NotNull PoseStack matrixStackIn,
+    public void render(ItemEntity itemIn, float entityYRot, float partialTick, @NotNull PoseStack matrixStackIn,
                        @NotNull MultiBufferSource bufferIn, int packedLightIn) {
         this.shadowRadius = 0;
 
         if (!itemIn.getItem().isEmpty()) {
-            renderBlade(itemIn, entityYaw, partialTicks, matrixStackIn, bufferIn, packedLightIn);
+            renderBlade(itemIn, entityYRot, partialTick, matrixStackIn, bufferIn, packedLightIn);
         } else {
-            partialTicks = (float) (itemIn.bobOffs * 20.0 - (double) itemIn.getAge());
-            super.render(itemIn, entityYaw, partialTicks, matrixStackIn, bufferIn, packedLightIn);
+            partialTick = (float) (itemIn.bobOffs * 20.0 - (double) itemIn.getAge());
+            super.render(itemIn, entityYRot, partialTick, matrixStackIn, bufferIn, packedLightIn);
         }
     }
 
-    private void renderBlade(ItemEntity itemIn, float entityYaw, float partialTicks, PoseStack matrixStackIn,
+    private void renderBlade(ItemEntity itemIn, float entityYRot, float partialTick, PoseStack matrixStackIn,
                              MultiBufferSource bufferIn, int packedLightIn) {
         if (itemIn instanceof BladeItemEntity bladeItem) {
             try (MSAutoCloser msac = MSAutoCloser.pushMatrix(matrixStackIn)) {
-                matrixStackIn.mulPose(Axis.YP.rotationDegrees(entityYaw));
+                matrixStackIn.mulPose(Axis.YP.rotationDegrees(entityYRot));
 
                 ItemStack current = itemIn.getItem();
 
                 EnumSet<SwordType> types = SwordType.from(current);
                 itemIn.getPersistentData();
-                ResourceLocation modelLocation = current.getCapability(ItemSlashBlade.BLADESTATE)
+                ResourceLocation modelLocation = BladeStateAccess.of(current)
                         .map((state) -> state.getModel().orElseGet(bladeItem::getModel)).orElseGet(bladeItem::getModel);
-                ResourceLocation textureLocation = current.getCapability(ItemSlashBlade.BLADESTATE)
+                ResourceLocation textureLocation = BladeStateAccess.of(current)
                         .map((state) -> state.getTexture().orElseGet(bladeItem::getTexture))
                         .orElseGet(bladeItem::getTexture);
 
@@ -99,7 +89,7 @@ public class BladeItemEntityRenderer extends ItemEntityRenderer {
                         matrixStackIn.scale(scale, scale, scale);
 
                         float speed = -81f;
-                        matrixStackIn.mulPose(Axis.ZP.rotationDegrees(speed * (itemIn.tickCount + partialTicks)));
+                        matrixStackIn.mulPose(Axis.ZP.rotationDegrees(speed * (itemIn.tickCount + partialTick)));
                         matrixStackIn.translate(xOffset, 0, 0);
                     } else {
                         matrixStackIn.scale(scale, scale, scale);

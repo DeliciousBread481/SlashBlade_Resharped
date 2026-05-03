@@ -1,6 +1,6 @@
 package mods.flammpfeil.slashblade.event.handler;
 
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import mods.flammpfeil.slashblade.registry.ComboStateRegistry;
 import mods.flammpfeil.slashblade.registry.combo.ComboState;
 import mods.flammpfeil.slashblade.util.AdvancementHelper;
@@ -12,14 +12,16 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.common.ForgeMod;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.entity.living.LivingFallEvent;
-import net.minecraftforge.event.entity.player.PlayerFlyableFallEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.entity.living.LivingFallEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerFlyableFallEvent;
+import net.neoforged.bus.api.SubscribeEvent;
 
 public class FallHandler {
     private static final class SingletonHolder {
@@ -34,7 +36,7 @@ public class FallHandler {
     }
 
     public void register() {
-        MinecraftForge.EVENT_BUS.register(this);
+        NeoForge.EVENT_BUS.register(this);
     }
 
     @SubscribeEvent
@@ -48,14 +50,15 @@ public class FallHandler {
     }
 
     public static void resetState(LivingEntity user) {
-        user.getMainHandItem().getCapability(ItemSlashBlade.BLADESTATE).ifPresent((state) -> {
+        BladeStateAccess.of(user.getMainHandItem()).ifPresent((state) -> {
             state.setFallDecreaseRate(0);
 
-            ComboState combo = ComboStateRegistry.REGISTRY.get().getValue(state.getComboSeq()) != null
-                    ? ComboStateRegistry.REGISTRY.get().getValue(state.getComboSeq())
+            ResourceLocation comboSeq = state.getComboSeq();
+            ComboState combo = comboSeq != null && ComboStateRegistry.REGISTRY.containsKey(comboSeq)
+                    ? ComboStateRegistry.REGISTRY.get(comboSeq)
                     : ComboStateRegistry.NONE.get();
             if (combo != null && combo.isAerial()) {
-                state.setComboSeq(combo.getNextOfTimeout(user));
+                state.synchronizeComboSeq(user, combo.getNextOfTimeout(user));
             }
         });
 
@@ -106,7 +109,7 @@ public class FallHandler {
         if (!user.isNoGravity() && !user.onGround()) {
             user.fallDistance = 1;
 
-            float currentRatio = user.getMainHandItem().getCapability(ItemSlashBlade.BLADESTATE).map((state) -> {
+            float currentRatio = BladeStateAccess.of(user.getMainHandItem()).map((state) -> {
                 float decRatio = state.getFallDecreaseRate();
 
                 float newDecRatio = decRatio + 0.05f;
@@ -118,13 +121,15 @@ public class FallHandler {
 
             double gravityReductionFactor = 0.85f;
 
-            int level = user.getMainHandItem().getEnchantmentLevel(Enchantments.FALL_PROTECTION);
+            var enchLookup = user.registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
+            var featherFalling = enchLookup.getOrThrow(Enchantments.FEATHER_FALLING);
+            int level = EnchantmentHelper.getTagEnchantmentLevel(featherFalling, user.getMainHandItem());
             if (level > 0) {
                 gravityReductionFactor = Math.min(0.93, gravityReductionFactor + 0.02 * level);
-                AdvancementHelper.grantedIf(Enchantments.FALL_PROTECTION, user);
+                AdvancementHelper.grantedIf(featherFalling.value(), user);
             }
 
-            AttributeInstance gravity = user.getAttribute(ForgeMod.ENTITY_GRAVITY.get());
+            AttributeInstance gravity = user.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.GRAVITY);
             double g = 0;
             if (gravity != null) {
                 g = gravity.getValue() * gravityReductionFactor;
@@ -142,7 +147,7 @@ public class FallHandler {
             user.fallDistance = 1;
 
             Vec3 motion = user.getDeltaMovement();
-            AttributeInstance gravity = user.getAttribute(ForgeMod.ENTITY_GRAVITY.get());
+            AttributeInstance gravity = user.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.GRAVITY);
             double g = 0;
             if (gravity != null) {
                 g = gravity.getValue();

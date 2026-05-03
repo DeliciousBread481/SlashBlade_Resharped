@@ -1,20 +1,20 @@
 package mods.flammpfeil.slashblade.event.handler;
 
 import mods.flammpfeil.slashblade.SlashBladeConfig;
-import mods.flammpfeil.slashblade.capability.concentrationrank.ConcentrationRankCapabilityProvider;
+import mods.flammpfeil.slashblade.capability.concentrationrank.CapabilityConcentrationRank;
 import mods.flammpfeil.slashblade.capability.concentrationrank.IConcentrationRank;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import mods.flammpfeil.slashblade.event.SlashBladeEvent;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.item.SwordType;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.event.entity.living.LivingExperienceDropEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
+import net.neoforged.neoforge.event.entity.living.LivingExperienceDropEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
 
 public class KillCounter {
     private static final class SingletonHolder {
@@ -29,7 +29,7 @@ public class KillCounter {
     }
 
     public void register() {
-        MinecraftForge.EVENT_BUS.register(this);
+        NeoForge.EVENT_BUS.register(this);
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
@@ -44,13 +44,13 @@ public class KillCounter {
         if (stack.isEmpty()) {
             return;
         }
-        if (!(stack.getCapability(ItemSlashBlade.BLADESTATE).isPresent())) {
+        if (!(BladeStateAccess.of(stack).isPresent())) {
             return;
         }
 
-        stack.getCapability(ItemSlashBlade.BLADESTATE).ifPresent(state -> {
+        BladeStateAccess.of(stack).ifPresent(state -> {
             var killCountEvent = new SlashBladeEvent.AddKillCountEvent(stack, state, 1);
-            MinecraftForge.EVENT_BUS.post(killCountEvent);
+            NeoForge.EVENT_BUS.post(killCountEvent);
             state.setKillCount(state.getKillCount() + killCountEvent.getNewCount());
         });
     }
@@ -65,19 +65,19 @@ public class KillCounter {
         if (stack.isEmpty()) {
             return;
         }
-        if (!(stack.getCapability(ItemSlashBlade.BLADESTATE).isPresent())) {
+        if (!(BladeStateAccess.of(stack).isPresent())) {
             return;
         }
 
         IConcentrationRank.ConcentrationRanks rankBonus = player
-                .getCapability(ConcentrationRankCapabilityProvider.RANK_POINT)
+                .getExistingData(CapabilityConcentrationRank.RANK_POINT.get())
                 .map(rp -> rp.getRank(player.getCommandSenderWorld().getGameTime()))
                 .orElse(IConcentrationRank.ConcentrationRanks.NONE);
         int souls = (int) Math.floor(event.getDroppedExperience() * (1.0F + (rankBonus.level * 0.1F)));
 
-        stack.getCapability(ItemSlashBlade.BLADESTATE).ifPresent(state -> {
+        BladeStateAccess.of(stack).ifPresent(state -> {
             var soulEvent = new SlashBladeEvent.AddProudSoulEvent(stack, state, Math.min(SlashBladeConfig.MAX_PROUD_SOUL_GOT.get(), souls));
-            MinecraftForge.EVENT_BUS.post(soulEvent);
+            NeoForge.EVENT_BUS.post(soulEvent);
             int newCount = soulEvent.getNewCount();
             state.setProudSoulCount(
                     state.getProudSoulCount() + newCount);

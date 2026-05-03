@@ -1,16 +1,16 @@
 package mods.flammpfeil.slashblade.entity;
 
-import mods.flammpfeil.slashblade.SlashBlade;
+import mods.flammpfeil.slashblade.RegistryEvents;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import mods.flammpfeil.slashblade.capability.slashblade.ISlashBladeState;
 import mods.flammpfeil.slashblade.event.SlashBladeEvent;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerEntity;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -25,17 +25,15 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.ItemLike;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.AABB;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.entity.IEntityAdditionalSpawnData;
-import net.minecraftforge.network.NetworkHooks;
-import net.minecraftforge.network.PlayMessages;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.entity.IEntityWithComplexSpawn;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nullable;
 
-public class BladeStandEntity extends ItemFrame implements IEntityAdditionalSpawnData {
+public class BladeStandEntity extends ItemFrame implements IEntityWithComplexSpawn {
 
     public Item currentType = null;
     public ItemStack currentTypeStack = ItemStack.EMPTY;
@@ -45,15 +43,15 @@ public class BladeStandEntity extends ItemFrame implements IEntityAdditionalSpaw
     }
 
     @Override
-    public @NotNull Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
+    public @NotNull Packet<ClientGamePacketListener> getAddEntityPacket(ServerEntity serverEntity) {
+        return super.getAddEntityPacket(serverEntity);
     }
 
     @Override
     public void addAdditionalSaveData(@NotNull CompoundTag compound) {
         super.addAdditionalSaveData(compound);
         String standTypeStr;
-        ResourceLocation itemsKey = ForgeRegistries.ITEMS.getKey(this.currentType);
+        ResourceLocation itemsKey = BuiltInRegistries.ITEM.getKey(this.currentType);
         if (this.currentType != null && itemsKey != null) {
             standTypeStr = itemsKey.toString();
         } else {
@@ -67,20 +65,27 @@ public class BladeStandEntity extends ItemFrame implements IEntityAdditionalSpaw
     @Override
     public void readAdditionalSaveData(@NotNull CompoundTag compound) {
         super.readAdditionalSaveData(compound);
-        this.currentType = ForgeRegistries.ITEMS.getValue(new ResourceLocation(compound.getString("StandType")));
-
-        this.setPose(Pose.values()[compound.getByte("Pose") % Pose.values().length]);
+        String standTypeStr = compound.getString("StandType");
+        if (standTypeStr.isEmpty()) {
+            this.currentType = null;
+        } else {
+            ResourceLocation loc = ResourceLocation.tryParse(standTypeStr);
+            this.currentType = loc != null ? BuiltInRegistries.ITEM.get(loc) : null;
+        }
+        byte poseOrdinal = compound.getByte("Pose");
+        Pose[] poses = Pose.values();
+        this.setPose(poses.length > 0 ? poses[poseOrdinal % poses.length] : Pose.STANDING);
     }
 
     @Override
-    public void writeSpawnData(FriendlyByteBuf buffer) {
+    public void writeSpawnData(RegistryFriendlyByteBuf buffer) {
         CompoundTag tag = new CompoundTag();
         this.addAdditionalSaveData(tag);
         buffer.writeNbt(tag);
     }
 
     @Override
-    public void readSpawnData(FriendlyByteBuf additionalData) {
+    public void readSpawnData(RegistryFriendlyByteBuf additionalData) {
         CompoundTag tag = additionalData.readNbt();
         if (tag != null) {
             this.readAdditionalSaveData(tag);
@@ -88,17 +93,13 @@ public class BladeStandEntity extends ItemFrame implements IEntityAdditionalSpaw
     }
 
     public static BladeStandEntity createInstanceFromPos(Level worldIn, BlockPos placePos, Direction dir, Item type) {
-        BladeStandEntity e = new BladeStandEntity(SlashBlade.RegistryEvents.BladeStand, worldIn);
+        BladeStandEntity e = new BladeStandEntity(RegistryEvents.BladeStand, worldIn);
 
-        e.pos = placePos;
+        e.setPos(placePos.getX() + 0.5, placePos.getY(), placePos.getZ() + 0.5);
         e.setDirection(dir);
         e.currentType = type;
 
         return e;
-    }
-
-    public static BladeStandEntity createInstance(PlayMessages.SpawnEntity spawnEntity, Level world) {
-        return new BladeStandEntity(SlashBlade.RegistryEvents.BladeStand, world);
     }
 
     @Nullable
@@ -122,12 +123,12 @@ public class BladeStandEntity extends ItemFrame implements IEntityAdditionalSpaw
             return super.hurt(damageSource, cat);
         }
 
-        if (!blade.getCapability(ItemSlashBlade.BLADESTATE).isPresent()) {
+        if (!BladeStateAccess.of(blade).isPresent()) {
             return super.hurt(damageSource, cat);
         }
 
-        ISlashBladeState state = blade.getCapability(ItemSlashBlade.BLADESTATE).orElseThrow(NullPointerException::new);
-        if (MinecraftForge.EVENT_BUS.post(new SlashBladeEvent.BladeStandAttackEvent(blade, state, this, damageSource))) {
+        ISlashBladeState state = BladeStateAccess.of(blade).orElseThrow(NullPointerException::new);
+        if (NeoForge.EVENT_BUS.post(new SlashBladeEvent.BladeStandAttackEvent(blade, state, this, damageSource)).isCanceled()) {
             return true;
         }
 
@@ -144,7 +145,7 @@ public class BladeStandEntity extends ItemFrame implements IEntityAdditionalSpaw
                 int newIndex = (current.ordinal() + 1) % Pose.values().length;
                 this.setPose(Pose.values()[newIndex]);
                 result = InteractionResult.SUCCESS;
-            } else if ((!itemstack.isEmpty() && itemstack.getCapability(ItemSlashBlade.BLADESTATE).isPresent())
+            } else if ((!itemstack.isEmpty() && BladeStateAccess.of(itemstack).isPresent())
                     || (itemstack.isEmpty() && !this.getItem().isEmpty())) {
 
                 if (this.getItem().isEmpty()) {
@@ -178,6 +179,7 @@ public class BladeStandEntity extends ItemFrame implements IEntityAdditionalSpaw
 
     @Override
     protected @NotNull ItemStack getFrameItemStack() {
+        if (currentType == null) return ItemStack.EMPTY;
         return new ItemStack(currentType);
     }
 
@@ -191,26 +193,7 @@ public class BladeStandEntity extends ItemFrame implements IEntityAdditionalSpaw
         super.tick();
         ItemStack blade = this.getItem();
         if (blade.isEmpty()) return;
-        ISlashBladeState state = blade.getCapability(ItemSlashBlade.BLADESTATE).orElseThrow(NullPointerException::new);
-        MinecraftForge.EVENT_BUS.post(new SlashBladeEvent.BladeStandTickEvent(blade, state, this));
-    }
-
-    @Override
-    protected void recalculateBoundingBox() {
-        if (this.direction != null) {
-            double d0 = 2D / 16D;
-            double d1 = (double)this.pos.getX() + 0.5D - (double)this.direction.getStepX() * d0;
-            double d2 = (double)this.pos.getY() + 0.5D - (double)this.direction.getStepY() * d0;
-            double d3 = (double)this.pos.getZ() + 0.5D - (double)this.direction.getStepZ() * d0;
-            this.setPosRaw(d1, d2, d3);
-            double d4 = this.getWidth();
-            double d5 = this.getHeight();
-            double d6 = this.getWidth();
-
-            d4 /= 32.0D;
-            d5 /= 32.0D;
-            d6 /= 32.0D;
-            this.setBoundingBox(new AABB(d1 - d4, d2 - d5, d3 - d6, d1 + d4, d2 + d5, d3 + d6));
-        }
+        BladeStateAccess.of(blade).ifPresent(state ->
+            NeoForge.EVENT_BUS.post(new SlashBladeEvent.BladeStandTickEvent(blade, state, this)));
     }
 }

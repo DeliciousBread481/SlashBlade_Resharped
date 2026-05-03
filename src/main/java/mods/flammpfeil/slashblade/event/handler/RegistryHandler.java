@@ -2,17 +2,16 @@ package mods.flammpfeil.slashblade.event.handler;
 
 import mods.flammpfeil.slashblade.SlashBlade;
 import mods.flammpfeil.slashblade.event.drop.EntityDropEntry;
-import mods.flammpfeil.slashblade.recipe.SlashBladeIngredient;
+import mods.flammpfeil.slashblade.registry.ComboStateRegistry;
+import mods.flammpfeil.slashblade.registry.SlashArtsRegistry;
+import mods.flammpfeil.slashblade.registry.SpecialEffectsRegistry;
 import mods.flammpfeil.slashblade.registry.slashblade.SlashBladeDefinition;
-import net.minecraftforge.common.crafting.CraftingHelper;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.Mod.EventBusSubscriber.Bus;
-import net.minecraftforge.registries.DataPackRegistryEvent;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegisterEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.registries.DataPackRegistryEvent;
+import net.neoforged.neoforge.registries.NewRegistryEvent;
 
-@Mod.EventBusSubscriber(bus = Bus.MOD)
+@EventBusSubscriber(modid = SlashBlade.MODID)
 public class RegistryHandler {
 
     @SubscribeEvent
@@ -24,8 +23,9 @@ public class RegistryHandler {
     }
 
     @SubscribeEvent
-    public static void registerSerializers(RegisterEvent event) {
-        event.register(ForgeRegistries.Keys.RECIPE_SERIALIZERS, helper -> CraftingHelper
-                .register(SlashBlade.prefix("blade"), SlashBladeIngredient.Serializer.INSTANCE));
+    public static void registerRegistries(NewRegistryEvent event) {
+        event.register(ComboStateRegistry.REGISTRY);
+        event.register(SlashArtsRegistry.REGISTRY);
+        event.register(SpecialEffectsRegistry.REGISTRY);
     }
 }

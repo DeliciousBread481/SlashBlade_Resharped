@@ -5,12 +5,10 @@ import mezz.jei.api.recipe.category.extensions.vanilla.smithing.ISmithingCategor
 import mods.flammpfeil.slashblade.recipe.SlashBladeSmithingRecipe;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.core.RegistryAccess;
-import net.minecraft.world.Container;
-import net.minecraft.world.SimpleContainer;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.SmithingRecipeInput;
 import org.jetbrains.annotations.NotNull;
 
 public class SlashBladeSmithingCategoryExtension implements ISmithingCategoryExtension<SlashBladeSmithingRecipe> {
@@ -47,29 +45,25 @@ public class SlashBladeSmithingCategoryExtension implements ISmithingCategoryExt
 
         for (ItemStack template : templateIngredient.getItems()) {
             for (ItemStack base : baseIngredient.getItems()) {
-                Container recipeInput = createInput(template, base, addition);
+                SmithingRecipeInput recipeInput = createInput(template, base, addition);
                 ItemStack output = assembleResultItem(recipeInput, recipe);
                 ingredientAcceptor.addItemStack(output);
             }
         }
     }
 
-    private static <I extends Container> ItemStack assembleResultItem(I input, Recipe<I> recipe) {
+    private static ItemStack assembleResultItem(SmithingRecipeInput input, SlashBladeSmithingRecipe recipe) {
         Minecraft minecraft = Minecraft.getInstance();
         ClientLevel level = minecraft.level;
         if (level == null) {
-            throw new NullPointerException("level must not be null.");
+            return ItemStack.EMPTY;
         }
-        RegistryAccess registryAccess = level.registryAccess();
+        HolderLookup.Provider registryAccess = level.registryAccess();
         return recipe.assemble(input, registryAccess);
     }
 
-    private static Container createInput(ItemStack template, ItemStack base, ItemStack addition) {
-        Container container = new SimpleContainer(3);
-        container.setItem(0, template);
-        container.setItem(1, base);
-        container.setItem(2, addition);
-        return container;
+    private static SmithingRecipeInput createInput(ItemStack template, ItemStack base, ItemStack addition) {
+        return new SmithingRecipeInput(template, base, addition);
     }
 
 

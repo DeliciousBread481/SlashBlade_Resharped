@@ -3,15 +3,14 @@ package mods.flammpfeil.slashblade.capability.concentrationrank;
 import com.google.common.collect.ImmutableRangeMap;
 import com.google.common.collect.Range;
 import com.google.common.collect.RangeMap;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
-import mods.flammpfeil.slashblade.network.NetworkManager;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import mods.flammpfeil.slashblade.network.RankSyncMessage;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.network.PacketDistributor;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.Optional;
 
@@ -111,11 +110,8 @@ public interface IConcentrationRank {
             this.setLastRankRise(time);
         }
 
-        if (user instanceof ServerPlayer && !user.level().isClientSide()) {
-
-            RankSyncMessage msg = new RankSyncMessage();
-            msg.rawPoint = this.getRawRankPoint();
-            NetworkManager.INSTANCE.send(PacketDistributor.PLAYER.with(() -> (ServerPlayer) user), msg);
+        if (user instanceof ServerPlayer serverPlayer && !user.level().isClientSide()) {
+            PacketDistributor.sendToPlayer(serverPlayer, new RankSyncMessage(this.getRawRankPoint()));
         }
     }
 
@@ -126,7 +122,7 @@ public interface IConcentrationRank {
 
         ItemStack stack = user.getMainHandItem();
 
-        Optional<ResourceLocation> combo = stack.getCapability(ItemSlashBlade.BLADESTATE)
+        Optional<ResourceLocation> combo = BladeStateAccess.of(stack)
                 .map(s -> s.resolvCurrentComboState(user));
 
         float modifier = combo.map(this::getRankPointModifier).orElse(getRankPointModifier(src));

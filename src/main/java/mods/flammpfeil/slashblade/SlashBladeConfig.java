@@ -1,43 +1,43 @@
 package mods.flammpfeil.slashblade;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 import java.util.List;
 
 public class SlashBladeConfig {
-    public static ForgeConfigSpec COMMON_CONFIG;
+    public static ModConfigSpec COMMON_CONFIG;
 
-    public static ForgeConfigSpec.IntValue MAX_PROUDSOUL_DROP;
-    public static ForgeConfigSpec.IntValue MAX_ENCHANTED_PROUDSOUL_DROP;
+    public static ModConfigSpec.IntValue MAX_PROUDSOUL_DROP;
+    public static ModConfigSpec.IntValue MAX_ENCHANTED_PROUDSOUL_DROP;
 
-    public static ForgeConfigSpec.BooleanValue DO_CRAFTING_SUM_REFINE;
+    public static ModConfigSpec.BooleanValue DO_CRAFTING_SUM_REFINE;
 
-    public static ForgeConfigSpec.BooleanValue HUNGER_CAN_REPAIR;
-    public static ForgeConfigSpec.IntValue MAX_PROUD_SOUL_GOT;
-    public static ForgeConfigSpec.IntValue SUMMON_SWORD_COST;
-    public static ForgeConfigSpec.IntValue SUMMON_SWORD_ART_COST;
+    public static ModConfigSpec.BooleanValue HUNGER_CAN_REPAIR;
+    public static ModConfigSpec.IntValue MAX_PROUD_SOUL_GOT;
+    public static ModConfigSpec.IntValue SUMMON_SWORD_COST;
+    public static ModConfigSpec.IntValue SUMMON_SWORD_ART_COST;
 
-    public static ForgeConfigSpec.BooleanValue SELF_REPAIR_ENABLE;
-    public static ForgeConfigSpec.BooleanValue SELF_REPAIR_COST_EXP;
+    public static ModConfigSpec.BooleanValue SELF_REPAIR_ENABLE;
+    public static ModConfigSpec.BooleanValue SELF_REPAIR_COST_EXP;
 
-    public static ForgeConfigSpec.DoubleValue BEWITCHED_HUNGER_EXHAUSTION;
-    public static ForgeConfigSpec.IntValue BEWITCHED_EXP_COST;
+    public static ModConfigSpec.DoubleValue BEWITCHED_HUNGER_EXHAUSTION;
+    public static ModConfigSpec.IntValue BEWITCHED_EXP_COST;
 
-    public static ForgeConfigSpec.BooleanValue PVP_ENABLE;
-    public static ForgeConfigSpec.BooleanValue FRIENDLY_ENABLE;
-    public static ForgeConfigSpec.DoubleValue SABIGATANA_SPAWN_CHANCE;
-    public static ForgeConfigSpec.DoubleValue BROKEN_SABIGATANA_SPAWN_CHANCE;
-    public static ForgeConfigSpec.IntValue REFINE_LEVEL_COST;
+    public static ModConfigSpec.BooleanValue PVP_ENABLE;
+    public static ModConfigSpec.BooleanValue FRIENDLY_ENABLE;
+    public static ModConfigSpec.DoubleValue SABIGATANA_SPAWN_CHANCE;
+    public static ModConfigSpec.DoubleValue BROKEN_SABIGATANA_SPAWN_CHANCE;
+    public static ModConfigSpec.IntValue REFINE_LEVEL_COST;
 
-    public static ForgeConfigSpec.DoubleValue SLASHBLADE_DAMAGE_MULTIPLIER;
-    public static ForgeConfigSpec.DoubleValue REFINE_DAMAGE_MULTIPLIER;
-    public static ForgeConfigSpec.IntValue TRAPEZOHEDRON_MAX_REFINE;
+    public static ModConfigSpec.DoubleValue SLASHBLADE_DAMAGE_MULTIPLIER;
+    public static ModConfigSpec.DoubleValue REFINE_DAMAGE_MULTIPLIER;
+    public static ModConfigSpec.IntValue TRAPEZOHEDRON_MAX_REFINE;
 
-    public static ForgeConfigSpec.ConfigValue<List<? extends String>> NON_DROPPABLE_ENCHANTMENT;
+    public static ModConfigSpec.ConfigValue<List<? extends String>> NON_DROPPABLE_ENCHANTMENT;
 
     static {
-        ForgeConfigSpec.Builder COMMON_BUILDER = new ForgeConfigSpec.Builder();
+        ModConfigSpec.Builder COMMON_BUILDER = new ModConfigSpec.Builder();
         COMMON_BUILDER.comment("General settings").push("general");
 
         MAX_PROUDSOUL_DROP = COMMON_BUILDER.comment("Determining the count for proud soul when blade be broken.")

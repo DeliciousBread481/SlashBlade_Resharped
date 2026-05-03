@@ -9,8 +9,9 @@ import mods.flammpfeil.slashblade.init.DefaultResources;
 import mods.flammpfeil.slashblade.registry.ComboStateRegistry;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraft.util.Mth;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.common.NeoForge;
 
 import java.util.Map;
 
@@ -29,10 +30,10 @@ public class PlayerAnimationOverrider {
     }
 
     public void register() {
-        MinecraftForge.EVENT_BUS.register(this);
+        NeoForge.EVENT_BUS.register(this);
     }
 
-    private static final ResourceLocation MotionLocation = new ResourceLocation(SlashBlade.MODID,
+    private static final ResourceLocation MotionLocation = ResourceLocation.fromNamespaceAndPath(SlashBlade.MODID,
             "model/pa/player_motion.vmd");
 
     public Map<ResourceLocation, VmdAnimation> getAnimation() {
@@ -50,9 +51,11 @@ public class PlayerAnimationOverrider {
         VmdAnimation animation = this.getAnimation().get(event.getCombo());
 
         if (animation != null) {
+            VmdAnimation animLayer = animation.getClone();
+            int elapsedTicks = Mth.floor(Math.max(0L, player.level().getGameTime() - event.getActionTime()) + 1L);
             animationStack.removeLayer(0);
-            animation.play();
-            animationStack.addAnimLayer(0, animation.getClone());
+            animLayer.play(elapsedTicks);
+            animationStack.addAnimLayer(0, animLayer);
         }
 
     }

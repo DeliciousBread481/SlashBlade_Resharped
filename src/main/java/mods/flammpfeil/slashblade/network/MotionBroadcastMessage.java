@@ -1,77 +1,47 @@
 package mods.flammpfeil.slashblade.network;
 
+import mods.flammpfeil.slashblade.SlashBlade;
 import mods.flammpfeil.slashblade.event.BladeMotionEvent;
 import mods.flammpfeil.slashblade.registry.ComboStateRegistry;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.player.AbstractClientPlayer;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkDirection;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.UUID;
-import java.util.function.BiConsumer;
-import java.util.function.Supplier;
 
-public class MotionBroadcastMessage {
-    public UUID playerId;
-    public String combo;
+public record MotionBroadcastMessage(UUID playerId, ResourceLocation combo, long actionTime) implements CustomPacketPayload {
+    public static final Type<MotionBroadcastMessage> TYPE = new Type<>(SlashBlade.prefix("motion_broadcast"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, MotionBroadcastMessage> STREAM_CODEC = CustomPacketPayload
+            .codec(MotionBroadcastMessage::write, MotionBroadcastMessage::new);
 
-    public MotionBroadcastMessage() {
+    private MotionBroadcastMessage(RegistryFriendlyByteBuf buf) {
+        this(buf.readUUID(), buf.readResourceLocation(), buf.readVarLong());
     }
 
-    static public MotionBroadcastMessage decode(FriendlyByteBuf buf) {
-        MotionBroadcastMessage msg = new MotionBroadcastMessage();
-        msg.playerId = buf.readUUID();
-        msg.combo = buf.readUtf();
-        return msg;
+    private void write(RegistryFriendlyByteBuf buf) {
+        buf.writeUUID(this.playerId);
+        buf.writeResourceLocation(this.combo);
+        buf.writeVarLong(this.actionTime);
     }
 
-    static public void encode(MotionBroadcastMessage msg, FriendlyByteBuf buf) {
-        buf.writeUUID(msg.playerId);
-        buf.writeUtf(msg.combo);
+    @Override
+    public Type<MotionBroadcastMessage> type() {
+        return TYPE;
     }
 
-    static public void handle(MotionBroadcastMessage msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().setPacketHandled(true);
-
-        if (ctx.get().getDirection() != NetworkDirection.PLAY_TO_CLIENT) {
-            return;
-        }
-
-        BiConsumer<UUID, String> handler = DistExecutor.callWhenOn(Dist.CLIENT,
-                () -> () -> MotionBroadcastMessage::setPoint);
-
-        if (handler != null) {
-            ctx.get().enqueueWork(() -> handler.accept(msg.playerId, msg.combo));
-        }
-
-    }
-
-    @OnlyIn(Dist.CLIENT)
-    static public void setPoint(UUID playerId, String combo) {
-        Player target = null;
-        if (Minecraft.getInstance().level != null) {
-            target = Minecraft.getInstance().level.getPlayerByUUID(playerId);
-        }
-
+    public static void handle(MotionBroadcastMessage msg, IPayloadContext ctx) {
+        Player target = ctx.player().level().getPlayerByUUID(msg.playerId());
         if (target == null) {
             return;
         }
-        if (!(target instanceof AbstractClientPlayer)) {
+        if (!ComboStateRegistry.REGISTRY.containsKey(msg.combo())) {
             return;
         }
 
-        ResourceLocation state = ResourceLocation.tryParse(combo);
-        if (state == null || !ComboStateRegistry.REGISTRY.get().containsKey(state)) {
-            return;
-        }
-
-        MinecraftForge.EVENT_BUS.post(new BladeMotionEvent(target, state));
+        NeoForge.EVENT_BUS.post(new BladeMotionEvent(target, msg.combo(), msg.actionTime()));
     }
 }

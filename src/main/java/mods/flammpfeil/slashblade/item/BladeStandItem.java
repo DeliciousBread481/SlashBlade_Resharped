@@ -1,16 +1,17 @@
 package mods.flammpfeil.slashblade.item;
 
-import mods.flammpfeil.slashblade.SlashBlade;
+import mods.flammpfeil.slashblade.RegistryEvents;
 import mods.flammpfeil.slashblade.entity.BladeStandEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.decoration.HangingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.HangingEntityItem;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.NotNull;
@@ -23,7 +24,7 @@ public class BladeStandItem extends HangingEntityItem {
     }
 
     public BladeStandItem(Properties builder, boolean isWallType) {
-        super(SlashBlade.RegistryEvents.BladeStand, builder);
+        super(RegistryEvents.BladeStand, builder);
 
         this.isWallType = isWallType;
     }
@@ -41,9 +42,9 @@ public class BladeStandItem extends HangingEntityItem {
             Level world = context.getLevel();
             HangingEntity hangingentity = BladeStandEntity.createInstanceFromPos(world, blockpos1, direction, this);
 
-            CompoundTag compoundnbt = itemstack.getTag();
-            if (compoundnbt != null) {
-                EntityType.updateCustomEntityTag(world, playerentity, hangingentity, compoundnbt);
+            CustomData entityData = itemstack.getOrDefault(DataComponents.ENTITY_DATA, CustomData.EMPTY);
+            if (!entityData.isEmpty()) {
+                EntityType.updateCustomEntityTag(world, playerentity, hangingentity, entityData);
             }
 
             if (hangingentity.survives()) {

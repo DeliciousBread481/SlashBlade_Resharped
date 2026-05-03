@@ -1,34 +1,26 @@
 package mods.flammpfeil.slashblade.event.handler;
 
+import mods.flammpfeil.slashblade.SlashBlade;
+import mods.flammpfeil.slashblade.capability.inputstate.CapabilityInputState;
 import mods.flammpfeil.slashblade.capability.inputstate.IInputState;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import mods.flammpfeil.slashblade.client.SlashBladeKeyMappings;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.network.MoveCommandMessage;
-import mods.flammpfeil.slashblade.network.NetworkManager;
 import mods.flammpfeil.slashblade.util.EnumSetConverter;
 import mods.flammpfeil.slashblade.util.InputCommand;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.world.level.Level;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.capabilities.CapabilityManager;
-import net.minecraftforge.common.capabilities.CapabilityToken;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.TickEvent.ClientTickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.EnumSet;
 
-@Mod.EventBusSubscriber(value = Dist.CLIENT)
+@EventBusSubscriber(modid = SlashBlade.MODID, value = Dist.CLIENT)
 public class MoveInputHandler {
-
-    public static final Capability<IInputState> INPUT_STATE = CapabilityManager.get(new CapabilityToken<>() {
-    });
-
-    public static final String LAST_CHANGE_TIME = "SB_LAST_CHANGE_TIME";
 
     public static boolean checkFlag(int data, int flags) {
         return (data & flags) == flags;
@@ -37,18 +29,13 @@ public class MoveInputHandler {
     @SuppressWarnings("resource")
     @OnlyIn(Dist.CLIENT)
     @SubscribeEvent()
-    public static void onPlayerPostTick(ClientTickEvent event) {
-
-        if (event.phase != TickEvent.Phase.END) {
-            return;
-        }
-
+    public static void onPlayerPostTick(ClientTickEvent.Post event) {
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null) {
             return;
         }
 
-        if (player.getMainHandItem().isEmpty() || !player.getMainHandItem().getCapability(ItemSlashBlade.BLADESTATE).isPresent()) {
+        if (player.getMainHandItem().isEmpty() || BladeStateAccess.of(player.getMainHandItem()).isEmpty()) {
             return;
         }
 
@@ -92,28 +79,22 @@ public class MoveInputHandler {
             commands.add(InputCommand.M_DOWN);
         }
 
-        EnumSet<InputCommand> old = player.getCapability(INPUT_STATE).map(IInputState::getCommands)
-                .orElseGet(() -> EnumSet.noneOf(InputCommand.class));
-
-        Level worldIn = player.getCommandSenderWorld();
-
-        long currentTime = worldIn.getGameTime();
+        IInputState state = player.getData(CapabilityInputState.INPUT_STATE.get());
+        EnumSet<InputCommand> old = state.getCommands().clone();
+        long currentTime = player.level().getGameTime();
         boolean doSend = !old.equals(commands);
 
         if (doSend) {
-            player.getCapability(INPUT_STATE).ifPresent((state) -> {
-                commands.forEach(c -> {
-                    if (!old.contains(c)) {
-                        state.getLastPressTimes().put(c, currentTime);
-                    }
-                });
-
-                state.getCommands().clear();
-                state.getCommands().addAll(commands);
+            commands.forEach(c -> {
+                if (!old.contains(c)) {
+                    state.getLastPressTimes().put(c, currentTime);
+                }
             });
-            MoveCommandMessage msg = new MoveCommandMessage();
-            msg.command = EnumSetConverter.convertToInt(commands);
-            NetworkManager.INSTANCE.sendToServer(msg);
+
+            state.getCommands().clear();
+            state.getCommands().addAll(commands);
+
+            PacketDistributor.sendToServer(new MoveCommandMessage(EnumSetConverter.convertToInt(commands)));
         }
     }
 }

@@ -1,11 +1,10 @@
 package mods.flammpfeil.slashblade.entity;
 
-import mods.flammpfeil.slashblade.SlashBlade;
 import mods.flammpfeil.slashblade.ability.StunManager;
-import mods.flammpfeil.slashblade.capability.concentrationrank.ConcentrationRankCapabilityProvider;
+import mods.flammpfeil.slashblade.capability.concentrationrank.CapabilityConcentrationRank;
 import mods.flammpfeil.slashblade.capability.concentrationrank.IConcentrationRank;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import mods.flammpfeil.slashblade.capability.slashblade.ISlashBladeState;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.util.AttackManager;
 import mods.flammpfeil.slashblade.util.EnumSetConverter;
 import mods.flammpfeil.slashblade.util.KnockBacks;
@@ -16,6 +15,8 @@ import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerEntity;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
@@ -33,10 +34,9 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.entity.PartEntity;
-import net.minecraftforge.network.PlayMessages;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.entity.PartEntity;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nullable;
@@ -88,22 +88,18 @@ public class EntityDrive extends EntityAbstractSummonedSword {
         // this.setGlowing(true);
     }
 
-    public static EntityDrive createInstance(PlayMessages.SpawnEntity packet, Level worldIn) {
-        return new EntityDrive(SlashBlade.RegistryEvents.Drive, worldIn);
-    }
-
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-        this.entityData.define(COLOR, 0x3333FF);
-        this.entityData.define(FLAGS, 0);
-        this.entityData.define(RANK, 0.0f);
-        this.entityData.define(LIFETIME, 10.0f);
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(COLOR, 0x3333FF);
+        builder.define(FLAGS, 0);
+        builder.define(RANK, 0.0f);
+        builder.define(LIFETIME, 10.0f);
 
-        this.entityData.define(ROTATION_OFFSET, 0.0f);
-        this.entityData.define(ROTATION_ROLL, 0.0f);
-        this.entityData.define(BASESIZE, 1.0f);
-        this.entityData.define(SPEED, 0.5f);
+        builder.define(ROTATION_OFFSET, 0.0f);
+        builder.define(ROTATION_ROLL, 0.0f);
+        builder.define(BASESIZE, 1.0f);
+        builder.define(SPEED, 0.5f);
     }
 
     @Override
@@ -130,8 +126,8 @@ public class EntityDrive extends EntityAbstractSummonedSword {
     }
 
     @Override
-    public @NotNull Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return super.getAddEntityPacket();
+    public @NotNull Packet<ClientGamePacketListener> getAddEntityPacket(ServerEntity entity) {
+        return super.getAddEntityPacket(entity);
     }
 
     @Override
@@ -294,7 +290,7 @@ public class EntityDrive extends EntityAbstractSummonedSword {
 
         int fireTime = targetEntity.getRemainingFireTicks();
         if (this.isOnFire() && !(targetEntity instanceof EnderMan)) {
-            targetEntity.setSecondsOnFire(5);
+            targetEntity.setRemainingFireTicks(5 * 20);
         }
 
         // todo: attack manager
@@ -303,13 +299,12 @@ public class EntityDrive extends EntityAbstractSummonedSword {
             damageValue *= (float) living.getAttributeValue(Attributes.ATTACK_DAMAGE);
             //评分等级加成
             if (living instanceof Player player) {
-                IConcentrationRank.ConcentrationRanks rankBonus = player
-                        .getCapability(ConcentrationRankCapabilityProvider.RANK_POINT)
-                        .map(rp -> rp.getRank(player.getCommandSenderWorld().getGameTime()))
-                        .orElse(IConcentrationRank.ConcentrationRanks.NONE);
+                IConcentrationRank.ConcentrationRanks rankBonus = player.hasData(CapabilityConcentrationRank.RANK_POINT.get())
+                        ? player.getData(CapabilityConcentrationRank.RANK_POINT.get()).getRank(player.getCommandSenderWorld().getGameTime())
+                        : IConcentrationRank.ConcentrationRanks.NONE;
                 float rankDamageBonus = rankBonus.level / 2.0f;
                 if (IConcentrationRank.ConcentrationRanks.S.level <= rankBonus.level) {
-                    int refine = player.getMainHandItem().getCapability(ItemSlashBlade.BLADESTATE).map(ISlashBladeState::getRefine).orElse(0);
+                    int refine = BladeStateAccess.of(player.getMainHandItem()).map(ISlashBladeState::getRefine).orElse(0);
                     int level = player.experienceLevel;
                     rankDamageBonus = (float) Math.max(rankDamageBonus, Math.min(level, refine) * REFINE_DAMAGE_MULTIPLIER.get());
                 }
@@ -331,8 +326,7 @@ public class EntityDrive extends EntityAbstractSummonedSword {
 
                 StunManager.setStun(targetLivingEntity);
                 if (!this.level().isClientSide() && shooter instanceof LivingEntity) {
-                    EnchantmentHelper.doPostHurtEffects(targetLivingEntity, shooter);
-                    EnchantmentHelper.doPostDamageEffects((LivingEntity) shooter, targetLivingEntity);
+                    EnchantmentHelper.doPostAttackEffects((ServerLevel) this.level(), targetLivingEntity, damagesource);
                 }
 
                 affectEntity(targetLivingEntity, getPotionEffects(), 1.0f);

@@ -1,11 +1,12 @@
 package mods.flammpfeil.slashblade.slasharts;
 
-import mods.flammpfeil.slashblade.SlashBlade;
-import mods.flammpfeil.slashblade.capability.concentrationrank.ConcentrationRankCapabilityProvider;
+import mods.flammpfeil.slashblade.RegistryEvents;
+import mods.flammpfeil.slashblade.capability.concentrationrank.CapabilityConcentrationRank;
+import mods.flammpfeil.slashblade.capability.concentrationrank.IConcentrationRank;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import mods.flammpfeil.slashblade.capability.slashblade.ISlashBladeState;
 import mods.flammpfeil.slashblade.entity.EntitySlashEffect;
 import mods.flammpfeil.slashblade.event.SlashBladeEvent;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.util.KnockBacks;
 import mods.flammpfeil.slashblade.util.VectorHelper;
 import net.minecraft.sounds.SoundEvent;
@@ -13,7 +14,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.common.MinecraftForge;
+import net.neoforged.neoforge.common.NeoForge;
 
 public class CircleSlash {
     public static void doCircleSlashAttack(LivingEntity living, float yRot) {
@@ -22,14 +23,14 @@ public class CircleSlash {
         }
 
         ItemStack blade = living.getMainHandItem();
-        if (!blade.getCapability(ItemSlashBlade.BLADESTATE).isPresent()) {
+        if (!BladeStateAccess.of(blade).isPresent()) {
             return;
         }
         SlashBladeEvent.DoSlashEvent event = new SlashBladeEvent.DoSlashEvent(blade,
-                blade.getCapability(ItemSlashBlade.BLADESTATE).orElseThrow(NullPointerException::new),
+                BladeStateAccess.of(blade).orElseThrow(NullPointerException::new),
                 living, 0, true, 0.325D, KnockBacks.cancel);
         event.setYRot(yRot);
-        if (MinecraftForge.EVENT_BUS.post(event)) {
+        if (NeoForge.EVENT_BUS.post(event).isCanceled()) {
             return;
         }
 
@@ -40,7 +41,7 @@ public class CircleSlash {
                 .add(VectorHelper.getVectorForRotation(0, living.getViewYRot(0) + 90).scale(Vec3.ZERO.z))
                 .add(living.getLookAngle().scale(Vec3.ZERO.z));
 
-        EntitySlashEffect jc = new EntitySlashEffect(SlashBlade.RegistryEvents.SlashEffect, living.level()) {
+        EntitySlashEffect jc = new EntitySlashEffect(RegistryEvents.SlashEffect, living.level()) {
 
             @Override
             public SoundEvent getSlashSound() {
@@ -54,7 +55,7 @@ public class CircleSlash {
         jc.setYRot(living.getYRot() - 22.5F + yRot);
         jc.setXRot(0);
 
-        int colorCode = living.getMainHandItem().getCapability(ItemSlashBlade.BLADESTATE)
+        int colorCode = BladeStateAccess.of(living.getMainHandItem())
                 .map(ISlashBladeState::getColorCode).orElse(0xFFFFFF);
         jc.setColor(colorCode);
 
@@ -65,8 +66,10 @@ public class CircleSlash {
 
         jc.setKnockBack(event.getKnockback());
 
-        living.getCapability(ConcentrationRankCapabilityProvider.RANK_POINT)
-                .ifPresent(rank -> jc.setRank(rank.getRankLevel(living.level().getGameTime())));
+        IConcentrationRank rank = living.getData(CapabilityConcentrationRank.RANK_POINT.get());
+        if (rank != null) {
+            jc.setRank(rank.getRankLevel(living.level().getGameTime()));
+        }
 
         living.level().addFreshEntity(jc);
     }

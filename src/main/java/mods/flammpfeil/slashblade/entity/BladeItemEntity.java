@@ -1,6 +1,5 @@
 package mods.flammpfeil.slashblade.entity;
 
-import mods.flammpfeil.slashblade.SlashBlade;
 import mods.flammpfeil.slashblade.init.DefaultResources;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -12,6 +11,7 @@ import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerEntity;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
@@ -20,8 +20,6 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.network.NetworkHooks;
-import net.minecraftforge.network.PlayMessages;
 import org.jetbrains.annotations.NotNull;
 
 public class BladeItemEntity extends ItemEntity {
@@ -35,10 +33,10 @@ public class BladeItemEntity extends ItemEntity {
     }
 
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-        this.getEntityData().define(DATA_MODEL, DefaultResources.resourceDefaultModel.toString());
-        this.getEntityData().define(DATA_TEXTURE, DefaultResources.resourceDefaultTexture.toString());
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(DATA_MODEL, DefaultResources.resourceDefaultModel.toString());
+        builder.define(DATA_TEXTURE, DefaultResources.resourceDefaultTexture.toString());
     }
 
     public ResourceLocation getModel() {
@@ -69,13 +67,9 @@ public class BladeItemEntity extends ItemEntity {
         this.load(compoundnbt);
     }
 
-    public static BladeItemEntity createInstanceFromPacket(PlayMessages.SpawnEntity packet, Level worldIn) {
-        return new BladeItemEntity(SlashBlade.RegistryEvents.BladeItem, worldIn);
-    }
-
     @Override
-    public @NotNull Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
+    public @NotNull Packet<ClientGamePacketListener> getAddEntityPacket(ServerEntity serverEntity) {
+        return super.getAddEntityPacket(serverEntity);
     }
 
     @Override

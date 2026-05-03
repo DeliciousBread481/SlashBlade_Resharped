@@ -1,7 +1,6 @@
 package mods.flammpfeil.slashblade.entity.ai;
 
 import mods.flammpfeil.slashblade.capability.mobeffect.CapabilityMobEffect;
-import mods.flammpfeil.slashblade.capability.mobeffect.IMobEffectState;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.goal.Goal;
 
@@ -21,8 +20,8 @@ public class StunGoal extends Goal {
     @Override
     public boolean canUse() {
 
-        return this.entity.getCapability(CapabilityMobEffect.MOB_EFFECT)
-                .filter((state) -> state.isStun(this.entity.level().getGameTime())).isPresent();
+        var mobEffect = this.entity.getData(CapabilityMobEffect.MOB_EFFECT.get());
+        return mobEffect != null && mobEffect.isStun(this.entity.level().getGameTime());
     }
 
     /**
@@ -31,6 +30,9 @@ public class StunGoal extends Goal {
      */
     @Override
     public void stop() {
-        this.entity.getCapability(CapabilityMobEffect.MOB_EFFECT).ifPresent(IMobEffectState::clearStunTimeOut);
+        var mobEffect = this.entity.getData(CapabilityMobEffect.MOB_EFFECT.get());
+        if (mobEffect != null) {
+            mobEffect.clearStunTimeOut();
+        }
     }
 }

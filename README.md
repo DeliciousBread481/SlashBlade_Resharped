@@ -34,21 +34,7 @@ SlashBlade: Resharped —— A SlashBlade mod fork for Modern Minecraft.
 锋刃既成，请君一试！  
 
 ---
-将该项目导入开发环境
-
-```groovy
-repositories {
-    maven {
-        name 'MMMaven'
-        url 'https://raw.github.com/0999312/MMMaven/main/repository'
-    }
-}
-
-dependencies {
-    // Now only 0.6.0 available
-    implementation fg.deobf("mods.flammpfeil.slashblade:SlashBlade_Resharped:${slash_blade_version}"
-}
-```
+当前主线基于 `Minecraft 1.21.1 NeoForge`。
 
 ***
 
@@ -69,8 +55,5 @@ The major differences between this mod to the original SlashBlade are:
 
 
 Take your blade again, and enjoy the combo attack!
-
-Optional library :   
-* playerAnimator  Add Support 1.20.1 v0.0.8 or later    
 
 License: MIT License  

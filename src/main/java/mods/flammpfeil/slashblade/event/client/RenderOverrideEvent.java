@@ -6,17 +6,16 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.eventbus.api.Cancelable;
-import net.minecraftforge.eventbus.api.Event;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.bus.api.ICancellableEvent;
+import net.neoforged.bus.api.Event;
+import net.neoforged.neoforge.common.NeoForge;
 
 import java.util.function.Function;
 
-@Cancelable
 @OnlyIn(Dist.CLIENT)
-public class RenderOverrideEvent extends Event {
+public class RenderOverrideEvent extends Event implements ICancellableEvent {
     ItemStack stack;
     WavefrontObject model;
     String target;
@@ -123,7 +122,7 @@ public class RenderOverrideEvent extends Event {
     public static RenderOverrideEvent onRenderOverride(ItemStack stack, WavefrontObject model, String target,
                                                        ResourceLocation texture, PoseStack matrixStack, MultiBufferSource buffer, int packedLightIn, Function<ResourceLocation, RenderType> getRenderType, boolean enableEffect) {
         RenderOverrideEvent event = new RenderOverrideEvent(stack, model, target, texture, matrixStack, buffer, packedLightIn, getRenderType, enableEffect);
-        MinecraftForge.EVENT_BUS.post(event);
+        NeoForge.EVENT_BUS.post(event);
         return event;
     }
 }

@@ -11,11 +11,11 @@ public interface DefaultResources {
 
     ResourceLocation testPLLocation = SlashBlade.prefix("combostate/piercing_pl.vmd");
 
-    ResourceLocation resourceDefaultModel = new ResourceLocation("slashblade", "model/blade.obj");
-    ResourceLocation resourceDefaultTexture = new ResourceLocation("slashblade", "model/blade.png");
+    ResourceLocation resourceDefaultModel = ResourceLocation.fromNamespaceAndPath("slashblade", "model/blade.obj");
+    ResourceLocation resourceDefaultTexture = ResourceLocation.fromNamespaceAndPath("slashblade", "model/blade.png");
 
-    ResourceLocation resourceDurabilityModel = new ResourceLocation("slashblade",
+    ResourceLocation resourceDurabilityModel = ResourceLocation.fromNamespaceAndPath("slashblade",
             "model/util/durability.obj");
-    ResourceLocation resourceDurabilityTexture = new ResourceLocation("slashblade",
+    ResourceLocation resourceDurabilityTexture = ResourceLocation.fromNamespaceAndPath("slashblade",
             "model/util/durability.png");
 }

@@ -1,14 +1,14 @@
 package mods.flammpfeil.slashblade.event.client;
 
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.client.event.RenderPlayerEvent;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.neoforged.neoforge.client.event.RenderPlayerEvent;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.bus.api.SubscribeEvent;
 
 public class SneakingMotionCanceller {
     private static final class SingletonHolder {
@@ -23,7 +23,7 @@ public class SneakingMotionCanceller {
     }
 
     public void register() {
-        MinecraftForge.EVENT_BUS.register(this);
+        NeoForge.EVENT_BUS.register(this);
     }
 
     @SubscribeEvent
@@ -33,7 +33,7 @@ public class SneakingMotionCanceller {
         if (stack.isEmpty()) {
             return;
         }
-        if (!(stack.getCapability(ItemSlashBlade.BLADESTATE).isPresent())) {
+        if (!(BladeStateAccess.of(stack).isPresent())) {
             return;
         }
 

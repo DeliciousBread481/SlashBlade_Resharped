@@ -1,6 +1,6 @@
 package mods.flammpfeil.slashblade.entity;
 
-import mods.flammpfeil.slashblade.SlashBlade;
+import mods.flammpfeil.slashblade.RegistryEvents;
 import mods.flammpfeil.slashblade.util.*;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
@@ -9,27 +9,25 @@ import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerEntity;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
-import net.minecraft.world.item.alchemy.PotionUtils;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.network.NetworkHooks;
-import net.minecraftforge.network.PlayMessages;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nullable;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -74,16 +72,12 @@ public class EntityJudgementCut extends Projectile implements IShootable {
         this.seed = this.random.nextInt(360);
     }
 
-    public static EntityJudgementCut createInstance(PlayMessages.SpawnEntity packet, Level worldIn) {
-        return new EntityJudgementCut(SlashBlade.RegistryEvents.JudgementCut, worldIn);
-    }
-
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-        this.entityData.define(COLOR, 0x3333FF);
-        this.entityData.define(FLAGS, 0);
-        this.entityData.define(RANK, 0.0f);
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(COLOR, 0x3333FF);
+        builder.define(FLAGS, 0);
+        builder.define(RANK, 0.0f);
     }
 
     @Override
@@ -105,8 +99,8 @@ public class EntityJudgementCut extends Projectile implements IShootable {
     }
 
     @Override
-    public @NotNull Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
+    public @NotNull Packet<ClientGamePacketListener> getAddEntityPacket(ServerEntity entity) {
+        return super.getAddEntityPacket(entity);
     }
 
     @Override
@@ -128,8 +122,7 @@ public class EntityJudgementCut extends Projectile implements IShootable {
 
     @Override
     @OnlyIn(Dist.CLIENT)
-    public void lerpTo(double x, double y, double z, float yaw, float pitch, int posRotationIncrements,
-                       boolean teleport) {
+    public void lerpTo(double x, double y, double z, float yaw, float pitch, int steps) {
         this.setPos(x, y, z);
         this.setRot(yaw, pitch);
     }
@@ -223,7 +216,7 @@ public class EntityJudgementCut extends Projectile implements IShootable {
 
             final int count = 3;
             if (getIsCritical() && 0 < tickCount && tickCount <= count) {
-                EntitySlashEffect jc = new EntitySlashEffect(SlashBlade.RegistryEvents.SlashEffect, this.level());
+                EntitySlashEffect jc = new EntitySlashEffect(RegistryEvents.SlashEffect, this.level());
                 jc.absMoveTo(this.getX(), this.getY(), this.getZ(), (360.0f / count) * tickCount + this.seed, 0);
                 jc.setRotationRoll(30);
 
@@ -341,7 +334,14 @@ public class EntityJudgementCut extends Projectile implements IShootable {
     }
 
     public List<MobEffectInstance> getPotionEffects() {
-        List<MobEffectInstance> effects = PotionUtils.getAllEffects(this.getPersistentData());
+        List<MobEffectInstance> effects = new ArrayList<>();
+        CompoundTag data = this.getPersistentData();
+        if (data.contains("CustomPotionEffects", 9)) {
+            var list = data.getList("CustomPotionEffects", 10);
+            for (int i = 0; i < list.size(); i++) {
+                effects.add(MobEffectInstance.load(list.getCompound(i)));
+            }
+        }
 
         if (effects.isEmpty()) {
             effects.add(new MobEffectInstance(MobEffects.POISON, 1, 1));
@@ -386,9 +386,9 @@ public class EntityJudgementCut extends Projectile implements IShootable {
 
     public void affectEntity(LivingEntity focusEntity, List<MobEffectInstance> effects, double factor) {
         for (MobEffectInstance effectinstance : getPotionEffects()) {
-            MobEffect effect = effectinstance.getEffect();
-            if (effect.isInstantenous()) {
-                effect.applyInstantenousEffect(this, this.getShooter(), focusEntity, effectinstance.getAmplifier(),
+            var effect = effectinstance.getEffect();
+            if (effect.value().isInstantenous()) {
+                effect.value().applyInstantenousEffect(this, this.getShooter(), focusEntity, effectinstance.getAmplifier(),
                         factor);
             } else {
                 int duration = (int) (factor * (double) effectinstance.getDuration() + 0.5D);

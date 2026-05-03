@@ -5,12 +5,6 @@
       "lvl": 2
     }
   ],
-  "forge:conditions": [
-    {
-      "type": "forge:mod_loaded",
-      "modid": "slashblade"
-    }
-  ],
   "name": "slashblade:koseki",
   "properties": {
     "attack_base": 5.0,

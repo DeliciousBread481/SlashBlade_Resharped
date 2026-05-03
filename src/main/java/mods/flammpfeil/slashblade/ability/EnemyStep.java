@@ -2,7 +2,7 @@ package mods.flammpfeil.slashblade.ability;
 
 import mods.flammpfeil.slashblade.SlashBlade;
 import mods.flammpfeil.slashblade.event.handler.InputCommandEvent;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import mods.flammpfeil.slashblade.registry.ComboStateRegistry;
 import mods.flammpfeil.slashblade.util.AdvancementHelper;
 import mods.flammpfeil.slashblade.util.InputCommand;
@@ -20,8 +20,8 @@ import net.minecraft.world.entity.ai.targeting.TargetingConditions;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.bus.api.SubscribeEvent;
 
 import java.util.EnumSet;
 import java.util.List;
@@ -39,13 +39,13 @@ public class EnemyStep {
     }
 
     public void register() {
-        MinecraftForge.EVENT_BUS.register(this);
+        NeoForge.EVENT_BUS.register(this);
     }
 
     static final TargetingConditions tc = new TargetingConditions(false).ignoreLineOfSight()
             .ignoreInvisibilityTesting();
 
-    static public final ResourceLocation ADVANCEMENT_ENEMY_STEP = new ResourceLocation(SlashBlade.MODID,
+    static public final ResourceLocation ADVANCEMENT_ENEMY_STEP = ResourceLocation.fromNamespaceAndPath(SlashBlade.MODID,
             "abilities/enemy_step");
 
     @SubscribeEvent
@@ -83,7 +83,7 @@ public class EnemyStep {
         AdvancementHelper.grantCriterion(sender, ADVANCEMENT_ENEMY_STEP);
         sender.playNotifySound(SoundEvents.PLAYER_SMALL_FALL, SoundSource.PLAYERS, 0.5f, 1.2f);
 
-        sender.getMainHandItem().getCapability(ItemSlashBlade.BLADESTATE).ifPresent(s -> s.updateComboSeq(sender, ComboStateRegistry.NONE.getId()));
+        BladeStateAccess.of(sender.getMainHandItem()).ifPresent(s -> s.updateComboSeq(sender, ComboStateRegistry.NONE.getId()));
 
         if (worldIn instanceof ServerLevel) {
             ((ServerLevel) worldIn).sendParticles(

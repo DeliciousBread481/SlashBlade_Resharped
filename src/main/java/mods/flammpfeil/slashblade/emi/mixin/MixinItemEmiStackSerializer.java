@@ -11,15 +11,20 @@ import dev.emi.emi.api.stack.serializer.EmiIngredientSerializer;
 import dev.emi.emi.api.stack.serializer.EmiStackSerializer;
 import dev.emi.emi.runtime.EmiLog;
 import dev.emi.emi.stack.serializer.ItemEmiStackSerializer;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import mods.flammpfeil.slashblade.item.ItemSlashBlade;
+import net.minecraft.core.Holder;
+import net.minecraft.core.component.DataComponentPatch;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.Tag;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.GsonHelper;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
 
-import java.util.Objects;
 import java.util.regex.Matcher;
 
 @Mixin(value = ItemEmiStackSerializer.class, remap = false)
@@ -31,8 +36,9 @@ public abstract class MixinItemEmiStackSerializer implements EmiStackSerializer<
                 stack.getRemainder().isEmpty() &&
                 !(stack.getItemStack().getItem() instanceof ItemSlashBlade)) {
             String s = getType() + ":" + stack.getId();
-            if (stack.hasNbt()) {
-                s += stack.getNbt().getAsString();
+            DataComponentPatch patch = stack.getComponentChanges();
+            if (!patch.isEmpty()) {
+                s += DataComponentPatch.CODEC.encodeStart(NbtOps.INSTANCE, patch).getOrThrow().getAsString();
             }
             return new JsonPrimitive(s);
 
@@ -40,8 +46,9 @@ public abstract class MixinItemEmiStackSerializer implements EmiStackSerializer<
             JsonObject json = new JsonObject();
             json.addProperty("type", getType());
             json.addProperty("id", stack.getId().toString());
-            if (stack.hasNbt()) {
-                json.addProperty("nbt", stack.getNbt().getAsString());
+            DataComponentPatch patch = stack.getComponentChanges();
+            if (!patch.isEmpty()) {
+                json.addProperty("nbt", DataComponentPatch.CODEC.encodeStart(NbtOps.INSTANCE, patch).getOrThrow().getAsString());
             }
             if (stack.getAmount() != 1) {
                 json.addProperty("amount", stack.getAmount());
@@ -51,7 +58,7 @@ public abstract class MixinItemEmiStackSerializer implements EmiStackSerializer<
             }
             ItemStack itemStack = stack.getItemStack();
             if (itemStack.getItem() instanceof ItemSlashBlade) {
-                var optional = itemStack.getCapability(ItemSlashBlade.BLADESTATE);
+                var optional = BladeStateAccess.of(itemStack);
                 if (optional.isPresent()) {
                     json.addProperty("sbCaps", optional.orElseThrow(NullPointerException::new).serializeNBT().getAsString());
 
@@ -92,7 +99,7 @@ public abstract class MixinItemEmiStackSerializer implements EmiStackSerializer<
             JsonObject json = element.getAsJsonObject();
             id = EmiPort.id(GsonHelper.getAsString(json, "id"));
             nbt = GsonHelper.getAsString(json, "nbt", null);
-            capNBT = GsonHelper.getAsString(json, "sbCaps");
+            capNBT = GsonHelper.getAsString(json, "sbCaps", null);
             amount = GsonHelper.getAsLong(json, "amount", 1);
             chance = GsonHelper.getAsFloat(json, "chance", 1);
             if (GsonHelper.isValidNode(json, "remainder")) {
@@ -104,29 +111,31 @@ public abstract class MixinItemEmiStackSerializer implements EmiStackSerializer<
         }
         if (id != null) {
             try {
-                CompoundTag nbtComp = null;
+                DataComponentPatch nbtPatch = DataComponentPatch.EMPTY;
                 if (nbt != null) {
-                    nbtComp = TagParser.parseTag(nbt);
+                    Tag tag = TagParser.parseTag(nbt);
+                    nbtPatch = DataComponentPatch.CODEC.parse(NbtOps.INSTANCE, tag).getOrThrow();
                 }
                 EmiStack stack;
                 if (capNBT != null) {
-                    CompoundTag tag = new CompoundTag();
-                    tag.put("Parent", TagParser.parseTag(capNBT));
-                    ItemStack itemStack = new ItemStack(
-                            Objects.requireNonNull(EmiPort.getItemRegistry().get(id)),
-                            (int) amount,
-                            tag
-                    );
-                    CompoundTag newNbt = itemStack.getOrCreateTag();
-                    if (nbtComp != null) {
-                        for (String key : nbtComp.getAllKeys()) {
-                            newNbt.put(key, nbtComp.get(key).copy());
-                        }
+                    var holderOpt = EmiPort.getItemRegistry().getHolder(id);
+                    if (holderOpt.isEmpty()) {
+                        return EmiStack.EMPTY;
                     }
-
-                    stack = new ItemEmiStack(itemStack);
+                    Holder<Item> holder = (Holder<Item>) holderOpt.get();
+                    CompoundTag capTag = TagParser.parseTag(capNBT);
+                    ItemStack itemStack = new ItemStack(holder, (int) amount, nbtPatch);
+                    BladeStateAccess.of(itemStack).ifPresent(state -> state.deserializeNBT(capTag));
+                    EmiStack emiStack = EmiStack.of(itemStack);
+                    if (chance != 1) {
+                        emiStack.setChance(chance);
+                    }
+                    if (!remainder.isEmpty()) {
+                        emiStack.setRemainder(remainder);
+                    }
+                    stack = emiStack;
                 } else {
-                    stack = create(id, nbtComp, amount);
+                    stack = create(id, nbtPatch, amount);
                 }
                 if (chance != 1) {
                     stack.setChance(chance);

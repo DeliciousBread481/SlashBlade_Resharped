@@ -1,56 +1,40 @@
 package mods.flammpfeil.slashblade.recipe;
 
-import com.google.gson.JsonObject;
-import net.minecraft.network.FriendlyByteBuf;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.GsonHelper;
-import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.CraftingBookCategory;
 import net.minecraft.world.item.crafting.RecipeSerializer;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import net.minecraft.world.item.crafting.ShapedRecipe;
+import net.minecraft.world.item.crafting.ShapedRecipePattern;
 
-import java.util.function.BiFunction;
+import java.util.Optional;
 
-public record SlashBladeShapedRecipeSerializer<T extends Recipe<?>, U extends T>(RecipeSerializer<T> compose,
-                                                                                 BiFunction<T, @Nullable ResourceLocation, U> converter) implements RecipeSerializer<U> {
+public record SlashBladeShapedRecipeSerializer() implements RecipeSerializer<SlashBladeShapedRecipe> {
+
+    public static final MapCodec<SlashBladeShapedRecipe> CODEC = RecordCodecBuilder.mapCodec(inst -> inst.group(
+            Codec.STRING.optionalFieldOf("group", "").forGetter(ShapedRecipe::getGroup),
+            CraftingBookCategory.CODEC.fieldOf("category").forGetter(ShapedRecipe::category),
+            ShapedRecipePattern.MAP_CODEC.forGetter(SlashBladeShapedRecipe::getPattern),
+            ItemStack.CODEC.fieldOf("result").forGetter(SlashBladeShapedRecipe::getResultStack),
+            ResourceLocation.CODEC.optionalFieldOf("blade").forGetter(r -> Optional.ofNullable(r.getOutputBlade()))
+    ).apply(inst, SlashBladeShapedRecipe::new));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, SlashBladeShapedRecipe> STREAM_CODEC =
+            ByteBufCodecs.fromCodecWithRegistries(CODEC.codec());
+
     @Override
-    @NotNull
-    public U fromJson(@NotNull ResourceLocation id, @NotNull JsonObject json) {
-        if (!json.has("result")) {
-            JsonObject object = new JsonObject();
-            object.addProperty("item", "slashblade:slashblade");
-            json.add("result", object);
-        }
-        T recipe = compose().fromJson(id, json);
-        if (json.has("blade")) {
-            ResourceLocation output = new ResourceLocation(GsonHelper.getAsString(json, "blade"));
-            return converter().apply(recipe, output);
-        }
-        return converter().apply(recipe,
-                new ResourceLocation(GsonHelper.getAsString(json.getAsJsonObject("result"), "item")));
+    public MapCodec<SlashBladeShapedRecipe> codec() {
+        return CODEC;
     }
 
     @Override
-    @NotNull
-    public U fromNetwork(@NotNull ResourceLocation id, @NotNull FriendlyByteBuf buf) {
-        T recipe = compose().fromNetwork(id, buf);
-        if (buf.readBoolean()) {
-            return converter().apply(recipe, buf.readResourceLocation());
-        }
-        return converter().apply(recipe, null);
-    }
-
-    @Override
-    public void toNetwork(@NotNull FriendlyByteBuf buf, @NotNull U recipe) {
-        compose().toNetwork(buf, recipe);
-        if (recipe instanceof SlashBladeShapedRecipe bladeRecipe) {
-            boolean hasName = bladeRecipe.getOutputBlade() != null;
-            buf.writeBoolean(hasName);
-            if (hasName) {
-                buf.writeResourceLocation(bladeRecipe.getOutputBlade());
-            }
-        } else {
-            buf.writeBoolean(false);
-        }
+    public StreamCodec<RegistryFriendlyByteBuf, SlashBladeShapedRecipe> streamCodec() {
+        return STREAM_CODEC;
     }
 }

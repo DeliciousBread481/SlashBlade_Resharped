@@ -9,8 +9,8 @@ import mods.flammpfeil.slashblade.SlashBlade;
 import mods.flammpfeil.slashblade.recipe.SlashBladeSmithingRecipe;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.Container;
-import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.RecipeHolder;
+import net.minecraft.world.item.crafting.RecipeInput;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.block.Blocks;
 
@@ -36,8 +36,11 @@ public class EMICompat implements EmiPlugin {
 
         // 注册SlashBlade锻造配方
         HashSet<ResourceLocation> vanillaSmithing = new HashSet<>();
-        List<SlashBladeSmithingRecipe> smithingRecipes = findRecipesByType(RecipeType.SMITHING).stream()
-                .filter(r -> r instanceof SlashBladeSmithingRecipe).map(r -> (SlashBladeSmithingRecipe) r).toList();
+        List<SlashBladeSmithingRecipe> smithingRecipes = findRecipesByType(registry, RecipeType.SMITHING).stream()
+                .map(RecipeHolder::value)
+                .filter(SlashBladeSmithingRecipe.class::isInstance)
+                .map(SlashBladeSmithingRecipe.class::cast)
+                .toList();
         for (SlashBladeSmithingRecipe recipe : smithingRecipes) {
             registry.addRecipe(new SlashBladeSmithingEmiRecipe(recipe));
             vanillaSmithing.add(recipe.getId());
@@ -50,10 +53,13 @@ public class EMICompat implements EmiPlugin {
 
     }
 
-    private static <C extends Container, T extends Recipe<C>> List<T> findRecipesByType(RecipeType<T> type) {
+    private static <I extends RecipeInput, T extends net.minecraft.world.item.crafting.Recipe<I>> List<RecipeHolder<T>> findRecipesByType(EmiRegistry registry, RecipeType<T> type) {
         Minecraft instance = Minecraft.getInstance();
         if (instance.level != null) {
             return instance.level.getRecipeManager().getAllRecipesFor(type);
+        }
+        if (instance.getConnection() != null) {
+            return instance.getConnection().getRecipeManager().getAllRecipesFor(type);
         }
         return List.of();
     }

@@ -1,9 +1,8 @@
 package mods.flammpfeil.slashblade.entity;
 
-import mods.flammpfeil.slashblade.SlashBlade;
 import mods.flammpfeil.slashblade.ability.StunManager;
-import mods.flammpfeil.slashblade.capability.inputstate.InputStateCapabilityProvider;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
+import mods.flammpfeil.slashblade.capability.inputstate.CapabilityInputState;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import mods.flammpfeil.slashblade.util.InputCommand;
 import mods.flammpfeil.slashblade.util.KnockBacks;
 import mods.flammpfeil.slashblade.util.RayTraceHelper;
@@ -23,7 +22,6 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.PlayMessages;
 
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -39,10 +37,10 @@ public class EntityBlisteringSwords extends EntityAbstractSummonedSword {
     }
 
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
 
-        this.entityData.define(IT_FIRED, false);
+        builder.define(IT_FIRED, false);
     }
 
     public void doFire() {
@@ -51,10 +49,6 @@ public class EntityBlisteringSwords extends EntityAbstractSummonedSword {
 
     public boolean itFired() {
         return this.getEntityData().get(IT_FIRED);
-    }
-
-    public static EntityBlisteringSwords createInstance(PlayMessages.SpawnEntity packet, Level worldIn) {
-        return new EntityBlisteringSwords(SlashBlade.RegistryEvents.BlisteringSwords, worldIn);
     }
 
     long fireTime = -1;
@@ -89,7 +83,7 @@ public class EntityBlisteringSwords extends EntityAbstractSummonedSword {
             worldIn = sender.level();
             Entity lockTarget = null;
             if (sender instanceof LivingEntity) {
-                lockTarget = sender.getMainHandItem().getCapability(ItemSlashBlade.BLADESTATE)
+                lockTarget = BladeStateAccess.of(sender.getMainHandItem())
                         .filter(state -> state.getTargetEntity(worldIn) != null)
                         .map(state -> state.getTargetEntity(worldIn)).orElse(null);
             }
@@ -140,22 +134,20 @@ public class EntityBlisteringSwords extends EntityAbstractSummonedSword {
 
         // this.startRiding()
         this.setDeltaMovement(Vec3.ZERO);
-        if (canUpdate()) {
-            this.baseTick();
-        }
+        this.baseTick();
 
         faceEntityStandby();
         // this.getVehicle().positionRider(this);
 
         // lifetime check
         if (!itFired() && getVehicle() instanceof LivingEntity owner) {
-            owner.getCapability(InputStateCapabilityProvider.INPUT_STATE).ifPresent(s -> {
+            if (owner.hasData(CapabilityInputState.INPUT_STATE.get())) {
+                var s = owner.getData(CapabilityInputState.INPUT_STATE.get());
                 if (!s.getCommands().contains(InputCommand.M_DOWN)) {
-
                     fireTime = tickCount + getDelay();
                     doFire();
                 }
-            });
+            }
         }
 
         /*

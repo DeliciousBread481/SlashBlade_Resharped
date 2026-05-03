@@ -1,6 +1,5 @@
 package mods.flammpfeil.slashblade.entity;
 
-import mods.flammpfeil.slashblade.SlashBlade;
 import mods.flammpfeil.slashblade.util.KnockBacks;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -14,9 +13,6 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.PlayMessages;
-
-import java.util.Objects;
 
 public class EntitySpiralSwords extends EntityAbstractSummonedSword {
     private static final EntityDataAccessor<Boolean> IT_FIRED = SynchedEntityData.defineId(EntitySpiralSwords.class,
@@ -29,10 +25,10 @@ public class EntitySpiralSwords extends EntityAbstractSummonedSword {
     }
 
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
 
-        this.entityData.define(IT_FIRED, false);
+        builder.define(IT_FIRED, false);
     }
 
     public void doFire() {
@@ -41,10 +37,6 @@ public class EntitySpiralSwords extends EntityAbstractSummonedSword {
 
     public boolean itFired() {
         return this.getEntityData().get(IT_FIRED);
-    }
-
-    public static EntitySpiralSwords createInstance(PlayMessages.SpawnEntity packet, Level worldIn) {
-        return new EntitySpiralSwords(SlashBlade.RegistryEvents.SpiralSwords, worldIn);
     }
 
     @Override
@@ -79,9 +71,7 @@ public class EntitySpiralSwords extends EntityAbstractSummonedSword {
 
         // this.startRiding()
         this.setDeltaMovement(Vec3.ZERO);
-        if (canUpdate()) {
-            this.baseTick();
-        }
+        this.baseTick();
 
         faceEntityStandby();
         // this.getVehicle().positionRider(this);
@@ -117,7 +107,7 @@ public class EntitySpiralSwords extends EntityAbstractSummonedSword {
         }
 
         if (raytraceresult != null && raytraceresult.getType() == HitResult.Type.ENTITY
-                && !net.minecraftforge.event.ForgeEventFactory.onProjectileImpact(this, raytraceresult)) {
+                && !net.neoforged.neoforge.event.EventHooks.onProjectileImpact(this, raytraceresult)) {
             this.onHit(raytraceresult);
             this.resetAlreadyHits();
             this.hasImpulse = true;

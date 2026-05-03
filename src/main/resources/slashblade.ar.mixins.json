@@ -1,7 +1,7 @@
 {
   "package": "mods.flammpfeil.slashblade.mixin.client.compat.ar",
   "plugin": "mods.flammpfeil.slashblade.mixin.client.compat.ar.ARMixinPlugin",
-  "compatibilityLevel": "JAVA_17",
+  "compatibilityLevel": "JAVA_21",
   "required": true,
   "minVersion": "0.8",
   "refmap": "slashblade.refmap.json",

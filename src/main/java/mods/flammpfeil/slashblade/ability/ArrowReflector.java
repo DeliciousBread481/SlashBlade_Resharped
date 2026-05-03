@@ -1,5 +1,6 @@
 package mods.flammpfeil.slashblade.ability;
 
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.registry.ComboStateRegistry;
 import mods.flammpfeil.slashblade.registry.combo.ComboState;
@@ -14,7 +15,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
-import java.util.Objects;
 
 public class ArrowReflector {
 
@@ -35,12 +35,11 @@ public class ArrowReflector {
             Vec3 dir = attacker.getLookAngle();
 
             do {
-                if (attacker instanceof LivingEntity) {
+                if (!(attacker instanceof LivingEntity living)) {
                     break;
                 }
 
-                // TODO: ???
-                ItemStack stack = ((LivingEntity) attacker).getMainHandItem();
+                ItemStack stack = living.getMainHandItem();
 
                 if (stack.isEmpty()) {
                     break;
@@ -49,13 +48,14 @@ public class ArrowReflector {
                     break;
                 }
 
-                Entity target = stack.getCapability(ItemSlashBlade.BLADESTATE)
-                        .map(s -> Objects.requireNonNull(s.getTargetEntity(attacker.level()))).orElse(null);
+                Entity target = BladeStateAccess.of(stack)
+                        .map(s -> s.getTargetEntity(living.level()))
+                        .orElse(null);
                 if (target != null) {
-                    dir = arrow.position().subtract(target.getEyePosition(1.0f)).normalize();
+                    dir = target.getEyePosition(1.0f).subtract(arrow.position()).normalize();
                 } else {
-                    dir = arrow.position()
-                            .subtract(attacker.getLookAngle().scale(10).add(attacker.getEyePosition(1.0f))).normalize();
+                    dir = living.getEyePosition(1.0f).add(living.getLookAngle().scale(10))
+                            .subtract(arrow.position()).normalize();
                 }
 
             } while (false);
@@ -80,7 +80,7 @@ public class ArrowReflector {
             return;
         }
 
-        stack.getCapability(ItemSlashBlade.BLADESTATE).ifPresent(s -> {
+        BladeStateAccess.of(stack).ifPresent(s -> {
             int ticks = attacker.getTicksUsingItem();
 
             if (ticks == 0) {
@@ -89,11 +89,13 @@ public class ArrowReflector {
 
             ResourceLocation old = s.getComboSeq();
             ResourceLocation current = s.resolvCurrentComboState(attacker);
-            ComboState currentCS = ComboStateRegistry.REGISTRY.get().getValue(current) != null
-                    ? ComboStateRegistry.REGISTRY.get().getValue(current)
-                    : ComboStateRegistry.NONE.get();
+            // ComboStateRegistry access: REGISTRY is a vanilla Registry<ComboState>
+            ComboState currentCS = ComboStateRegistry.REGISTRY.get(current);
+            if (currentCS == null) {
+                currentCS = ComboStateRegistry.NONE.get();
+            }
             if (old != current) {
-                ComboState oldCS = ComboStateRegistry.REGISTRY.get().getValue(current);
+                ComboState oldCS = ComboStateRegistry.REGISTRY.get(old);
                 if (oldCS != null) {
                     ticks -= (int) TimeValueHelper.getTicksFromMSec(oldCS.getTimeoutMS());
                 }

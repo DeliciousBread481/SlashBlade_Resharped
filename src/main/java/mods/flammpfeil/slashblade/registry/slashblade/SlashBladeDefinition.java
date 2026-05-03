@@ -5,19 +5,23 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import mods.flammpfeil.slashblade.SlashBlade;
 import mods.flammpfeil.slashblade.SlashBladeCreativeGroup;
-import mods.flammpfeil.slashblade.capability.slashblade.SlashBladeState;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
+
 import mods.flammpfeil.slashblade.event.SlashBladeRegistryEvent;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.registry.SlashBladeItems;
 import net.minecraft.Util;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.Holder.Reference;
 import net.minecraft.core.Registry;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.world.item.component.Unbreakable;
+import net.neoforged.neoforge.common.NeoForge;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Comparator;
@@ -33,7 +37,7 @@ public class SlashBladeDefinition {
                     PropertiesDefinition.CODEC.fieldOf("properties").forGetter(SlashBladeDefinition::getStateDefinition),
                     EnchantmentDefinition.CODEC.listOf().optionalFieldOf("enchantments", Lists.newArrayList())
                             .forGetter(SlashBladeDefinition::getEnchantments),
-                    ResourceLocation.CODEC.optionalFieldOf("creativeGroup", SlashBladeCreativeGroup.SLASHBLADE_GROUP.getId())
+                    ResourceLocation.CODEC.optionalFieldOf("creativeGroup", SlashBladeCreativeGroup.SLASHBLADE_GROUP.getKey().location())
                             .forGetter(SlashBladeDefinition::getCreativeGroup))
             .apply(instance, SlashBladeDefinition::new));
 
@@ -51,7 +55,7 @@ public class SlashBladeDefinition {
     public SlashBladeDefinition(ResourceLocation name, RenderDefinition renderDefinition,
                                 PropertiesDefinition stateDefinition, List<EnchantmentDefinition> enchantments) {
         this(SlashBlade.prefix("slashblade"), name, renderDefinition, stateDefinition, enchantments,
-                SlashBladeCreativeGroup.SLASHBLADE_GROUP.getId());
+                SlashBladeCreativeGroup.SLASHBLADE_GROUP.getKey().location());
     }
 
     public SlashBladeDefinition(ResourceLocation name, RenderDefinition renderDefinition,
@@ -63,7 +67,7 @@ public class SlashBladeDefinition {
     public SlashBladeDefinition(ResourceLocation item, ResourceLocation name, RenderDefinition renderDefinition,
                                 PropertiesDefinition stateDefinition, List<EnchantmentDefinition> enchantments) {
         this(item, name, renderDefinition, stateDefinition, enchantments,
-                SlashBladeCreativeGroup.SLASHBLADE_GROUP.getId());
+                SlashBladeCreativeGroup.SLASHBLADE_GROUP.getKey().location());
     }
 
 
@@ -102,18 +106,18 @@ public class SlashBladeDefinition {
         return enchantments;
     }
 
-    public ItemStack getBlade() {
-        return getBlade(getItem());
+    public ItemStack getBlade(HolderLookup.Provider registries) {
+        return getBlade(getItem(), registries);
     }
 
-    public ItemStack getBlade(Item bladeItem) {
+    public ItemStack getBlade(Item bladeItem, HolderLookup.Provider registries) {
 
-        if (MinecraftForge.EVENT_BUS.post(new SlashBladeRegistryEvent.Pre(this))) {
+        if (NeoForge.EVENT_BUS.post(new SlashBladeRegistryEvent.Pre(this)).isCanceled()) {
             return ItemStack.EMPTY;
         }
 
         ItemStack result = new ItemStack(bladeItem);
-        var state = result.getCapability(ItemSlashBlade.BLADESTATE).orElse(new SlashBladeState(result));
+        var state = BladeStateAccess.of(result).orElseThrow();
         state.setNonEmpty();
         state.setBaseAttackModifier(this.stateDefinition.getBaseAttackModifier());
         state.setMaxDamage(this.stateDefinition.getMaxDamage());
@@ -144,26 +148,24 @@ public class SlashBladeDefinition {
             state.setTranslationKey(this.getTranslationKey());
         }
 
-        result.getOrCreateTag().put("bladeState", state.serializeNBT());
-
-        for (var instance : this.enchantments) {
-            var enchantment = ForgeRegistries.ENCHANTMENTS.getValue(instance.getEnchantmentID());
-            if (enchantment != null) {
-                result.enchant(enchantment, instance.getEnchantmentLevel());
+        if (registries != null) {
+            for (var instance : this.enchantments) {
+                registries.lookup(Registries.ENCHANTMENT)
+                        .flatMap(reg -> reg.get(ResourceKey.create(Registries.ENCHANTMENT, instance.getEnchantmentID())))
+                        .ifPresent(holder -> result.enchant(holder, instance.getEnchantmentLevel()));
             }
-
         }
         if (this.stateDefinition.isUnbreakable()) {
-            result.getOrCreateTag().putBoolean("Unbreakable", true);
+            result.set(DataComponents.UNBREAKABLE, new Unbreakable(true));
         }
         var postRegistry = new SlashBladeRegistryEvent.Post(this, result);
-        MinecraftForge.EVENT_BUS.post(postRegistry);
+        NeoForge.EVENT_BUS.post(postRegistry);
         return postRegistry.getBlade();
     }
 
     public Item getItem() {
         @Nullable
-        Item value = ForgeRegistries.ITEMS.getValue(this.item);
+        Item value = BuiltInRegistries.ITEM.get(this.item);
         if (value == null) {
             return SlashBladeItems.SLASHBLADE.get();
         }

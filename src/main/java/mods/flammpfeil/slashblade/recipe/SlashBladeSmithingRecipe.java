@@ -1,32 +1,41 @@
 package mods.flammpfeil.slashblade.recipe;
 
-import com.google.gson.JsonObject;
+import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import mods.flammpfeil.slashblade.SlashBladeConfig;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.registry.SlashBladeItems;
 import mods.flammpfeil.slashblade.registry.slashblade.SlashBladeDefinition;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.RegistryAccess;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.GsonHelper;
 import net.minecraft.world.Container;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.SmithingRecipe;
+import net.minecraft.world.item.crafting.SmithingRecipeInput;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.common.ForgeHooks;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
 import java.util.stream.Stream;
 
 public class SlashBladeSmithingRecipe implements SmithingRecipe {
-    public static final RecipeSerializer<SlashBladeSmithingRecipe> SERIALIZER = new SlashBladeSmithingRecipe.Serializer();
+    public static final RecipeSerializer<SlashBladeSmithingRecipe> SERIALIZER =
+            new SlashBladeSmithingRecipe.Serializer();
     private final ResourceLocation outputBlade;
     private final ResourceLocation id;
 
@@ -34,7 +43,8 @@ public class SlashBladeSmithingRecipe implements SmithingRecipe {
     private final Ingredient base;
     private final Ingredient addition;
 
-    public SlashBladeSmithingRecipe(ResourceLocation id, ResourceLocation outputBlade, Ingredient template, Ingredient base, Ingredient addition) {
+    public SlashBladeSmithingRecipe(ResourceLocation id, ResourceLocation outputBlade,
+                                    Ingredient template, Ingredient base, Ingredient addition) {
         super();
         this.id = id;
         this.outputBlade = outputBlade;
@@ -59,59 +69,77 @@ public class SlashBladeSmithingRecipe implements SmithingRecipe {
         return addition;
     }
 
+    private ResourceKey<SlashBladeDefinition> getOutputBladeKey() {
+        return ResourceKey.create(SlashBladeDefinition.REGISTRY_KEY, this.outputBlade);
+    }
+
     private static ItemStack getResultBlade(ResourceLocation outputBlade) {
-        Item bladeItem = ForgeRegistries.ITEMS.containsKey(outputBlade) ? ForgeRegistries.ITEMS.getValue(outputBlade)
+        Item bladeItem = BuiltInRegistries.ITEM.containsKey(outputBlade) ? BuiltInRegistries.ITEM.get(outputBlade)
                 : SlashBladeItems.SLASHBLADE.get();
 
         return Objects.requireNonNullElseGet(bladeItem, SlashBladeItems.SLASHBLADE).getDefaultInstance();
     }
 
     @Override
-    public @NotNull ItemStack getResultItem(@NotNull RegistryAccess access) {
+    public @NotNull ItemStack getResultItem(@NotNull HolderLookup.Provider access) {
         ItemStack result = SlashBladeSmithingRecipe.getResultBlade(this.getOutputBlade());
 
-        if (!Objects.equals(ForgeRegistries.ITEMS.getKey(result.getItem()), getOutputBlade())) {
-            result = Objects.requireNonNull(access.registryOrThrow(SlashBladeDefinition.REGISTRY_KEY).get(getOutputBlade()))
-                    .getBlade();
+        if (!Objects.equals(BuiltInRegistries.ITEM.getKey(result.getItem()), getOutputBlade())) {
+            result = access.lookupOrThrow(SlashBladeDefinition.REGISTRY_KEY)
+                    .getOrThrow(getOutputBladeKey())
+                    .value()
+                    .getBlade(access);
         }
 
         return result;
     }
 
-    @Override
-    public boolean matches(Container container, @NotNull Level level) {
-        return this.template.test(container.getItem(0)) && this.base.test(container.getItem(1)) && this.addition.test(container.getItem(2));
+    public @NotNull ItemStack getResultItem(@NotNull RegistryAccess access) {
+        return this.getResultItem((HolderLookup.Provider) access);
     }
 
     @Override
-    public @NotNull ItemStack assemble(@NotNull Container container, @NotNull RegistryAccess access) {
+    public boolean matches(SmithingRecipeInput input, @NotNull Level level) {
+        return this.template.test(input.template())
+                && this.base.test(input.base())
+                && this.addition.test(input.addition());
+    }
+
+    @Override
+    public @NotNull ItemStack assemble(@NotNull SmithingRecipeInput input, @NotNull HolderLookup.Provider access) {
         var result = this.getResultItem(access);
         if (!(result.getItem() instanceof ItemSlashBlade)) {
             result = new ItemStack(SlashBladeItems.SLASHBLADE.get());
         }
 
-        var resultState = result.getCapability(ItemSlashBlade.BLADESTATE).orElseThrow(NullPointerException::new);
-        var stack = container.getItem(1);
-        if (!(stack.getCapability(ItemSlashBlade.BLADESTATE).isPresent())) {
+        var resultState = BladeStateAccess.of(result).orElseThrow(NullPointerException::new);
+        var stack = input.base();
+        if (!(BladeStateAccess.of(stack).isPresent())) {
             return ItemStack.EMPTY;
         }
-        var ingredientState = stack.getCapability(ItemSlashBlade.BLADESTATE).orElseThrow(NullPointerException::new);
+        var ingredientState = BladeStateAccess.of(stack).orElseThrow(NullPointerException::new);
 
         resultState.setProudSoulCount(resultState.getProudSoulCount() + ingredientState.getProudSoulCount());
-        resultState.setKillCount(
-                SlashBladeConfig.DO_CRAFTING_SUM_REFINE.get() ?
-                        Math.max(resultState.getKillCount(), ingredientState.getKillCount()) :
-                        resultState.getKillCount() + ingredientState.getKillCount()
-        );
-        resultState.setRefine(resultState.getRefine() + ingredientState.getRefine());
-        result.getOrCreateTag().put("bladeState", resultState.serializeNBT());
-        updateEnchantment(result, stack);
+        resultState.setKillCount(resultState.getKillCount() + ingredientState.getKillCount());
+        if (SlashBladeConfig.DO_CRAFTING_SUM_REFINE.get()) {
+            resultState.setRefine(resultState.getRefine() + ingredientState.getRefine());
+        } else {
+            resultState.setRefine(Math.max(resultState.getRefine(), ingredientState.getRefine()));
+        }
+        updateEnchantment(result, stack, access);
 
         return result;
     }
 
+    public @NotNull ItemStack assemble(@NotNull Container container, @NotNull RegistryAccess access) {
+        return this.assemble(new SmithingRecipeInput(
+                container.getItem(0),
+                container.getItem(1),
+                container.getItem(2)
+        ), (HolderLookup.Provider) access);
+    }
 
-    @Override
+
     public @NotNull ResourceLocation getId() {
         return this.id;
     }
@@ -123,7 +151,7 @@ public class SlashBladeSmithingRecipe implements SmithingRecipe {
 
     @Override
     public boolean isIncomplete() {
-        return Stream.of(this.template, this.base, this.addition).anyMatch(ForgeHooks::hasNoElements);
+        return Stream.of(this.template, this.base, this.addition).anyMatch(Ingredient::isEmpty);
     }
 
     @Override
@@ -145,59 +173,55 @@ public class SlashBladeSmithingRecipe implements SmithingRecipe {
         return outputBlade;
     }
 
-    private void updateEnchantment(ItemStack result, ItemStack ingredient) {
-        var newItemEnchants = result.getAllEnchantments();
-        var oldItemEnchants = ingredient.getAllEnchantments();
-        for (Enchantment enchantIndex : oldItemEnchants.keySet()) {
-
-            int destLevel = newItemEnchants.getOrDefault(enchantIndex, 0);
-            int srcLevel = oldItemEnchants.get(enchantIndex);
+    private void updateEnchantment(ItemStack result, ItemStack ingredient, HolderLookup.Provider access) {
+        HolderLookup.RegistryLookup<Enchantment> enchantmentLookup = access.lookupOrThrow(Registries.ENCHANTMENT);
+        ItemEnchantments.Mutable newItemEnchants = new ItemEnchantments.Mutable(EnchantmentHelper.getEnchantmentsForCrafting(result));
+        ItemEnchantments oldItemEnchants = ingredient.getAllEnchantments(enchantmentLookup);
+        for (var entry : oldItemEnchants.entrySet()) {
+            Holder<Enchantment> enchantment = entry.getKey();
+            int destLevel = newItemEnchants.getLevel(enchantment);
+            int srcLevel = entry.getIntValue();
 
             srcLevel = Math.max(srcLevel, destLevel);
-            srcLevel = Math.min(srcLevel, enchantIndex.getMaxLevel());
+            srcLevel = Math.min(srcLevel, enchantment.value().getMaxLevel());
 
-            boolean canApplyFlag = enchantIndex.canApplyAtEnchantingTable(result);
+            boolean canApplyFlag = result.supportsEnchantment(enchantment);
             if (canApplyFlag) {
-                for (Enchantment curEnchantIndex : newItemEnchants.keySet()) {
-                    if (curEnchantIndex != enchantIndex
-                            && !enchantIndex.isCompatibleWith(curEnchantIndex) /* canApplyTogether */) {
+                for (var currentEntry : newItemEnchants.toImmutable().entrySet()) {
+                    Holder<Enchantment> currentEnchantment = currentEntry.getKey();
+                    if (!currentEnchantment.equals(enchantment)
+                            && !Enchantment.areCompatible(enchantment, currentEnchantment)) {
                         canApplyFlag = false;
                         break;
                     }
                 }
                 if (canApplyFlag) {
-                    newItemEnchants.put(enchantIndex, srcLevel);
+                    newItemEnchants.set(enchantment, srcLevel);
                 }
             }
         }
-        EnchantmentHelper.setEnchantments(newItemEnchants, result);
+        EnchantmentHelper.setEnchantments(result, newItemEnchants.toImmutable());
     }
 
     public static class Serializer implements RecipeSerializer<SlashBladeSmithingRecipe> {
+        public static final MapCodec<SlashBladeSmithingRecipe> CODEC = RecordCodecBuilder.mapCodec(inst -> inst.group(
+                Ingredient.CODEC.fieldOf("template").forGetter(SlashBladeSmithingRecipe::getTemplate),
+                Ingredient.CODEC.fieldOf("base").forGetter(SlashBladeSmithingRecipe::getBase),
+                Ingredient.CODEC.fieldOf("addition").forGetter(SlashBladeSmithingRecipe::getAddition),
+                ResourceLocation.CODEC.fieldOf("blade").forGetter(SlashBladeSmithingRecipe::getOutputBlade)
+        ).apply(inst, (template, base, addition, blade) -> new SlashBladeSmithingRecipe(blade, template, base, addition)));
+
+        public static final StreamCodec<RegistryFriendlyByteBuf, SlashBladeSmithingRecipe> STREAM_CODEC =
+                ByteBufCodecs.fromCodecWithRegistries(CODEC.codec());
+
         @Override
-        public @NotNull SlashBladeSmithingRecipe fromJson(@NotNull ResourceLocation id, @NotNull JsonObject json) {
-            Ingredient ingredient = Ingredient.fromJson(GsonHelper.getNonNull(json, "template"));
-            Ingredient ingredient1 = Ingredient.fromJson(GsonHelper.getNonNull(json, "base"));
-            Ingredient ingredient2 = Ingredient.fromJson(GsonHelper.getNonNull(json, "addition"));
-            ResourceLocation output = new ResourceLocation(GsonHelper.getAsString(json, "blade"));
-            return new SlashBladeSmithingRecipe(id, output, ingredient, ingredient1, ingredient2);
+        public MapCodec<SlashBladeSmithingRecipe> codec() {
+            return CODEC;
         }
 
         @Override
-        public SlashBladeSmithingRecipe fromNetwork(@NotNull ResourceLocation id, @NotNull FriendlyByteBuf buffer) {
-            Ingredient ingredient = Ingredient.fromNetwork(buffer);
-            Ingredient ingredient1 = Ingredient.fromNetwork(buffer);
-            Ingredient ingredient2 = Ingredient.fromNetwork(buffer);
-            ResourceLocation blade = buffer.readResourceLocation();
-            return new SlashBladeSmithingRecipe(id, blade, ingredient, ingredient1, ingredient2);
-        }
-
-        @Override
-        public void toNetwork(@NotNull FriendlyByteBuf buffer, SlashBladeSmithingRecipe recipe) {
-            recipe.template.toNetwork(buffer);
-            recipe.base.toNetwork(buffer);
-            recipe.addition.toNetwork(buffer);
-            buffer.writeResourceLocation(recipe.outputBlade);
+        public StreamCodec<RegistryFriendlyByteBuf, SlashBladeSmithingRecipe> streamCodec() {
+            return STREAM_CODEC;
         }
     }
 }

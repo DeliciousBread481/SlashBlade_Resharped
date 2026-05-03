@@ -1,6 +1,5 @@
 package mods.flammpfeil.slashblade.entity;
 
-import mods.flammpfeil.slashblade.SlashBlade;
 import mods.flammpfeil.slashblade.ability.StunManager;
 import mods.flammpfeil.slashblade.util.KnockBacks;
 import net.minecraft.nbt.CompoundTag;
@@ -16,7 +15,6 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.PlayMessages;
 
 import java.util.Objects;
 
@@ -32,16 +30,16 @@ public class EntityHeavyRainSwords extends EntityAbstractSummonedSword {
         CompoundTag compoundtag = this.getPersistentData();
         ListTag listtag = compoundtag.getList("CustomPotionEffects", 9);
         MobEffectInstance mobeffectinstance = new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 20, 10);
-        listtag.add(mobeffectinstance.save(new CompoundTag()));
+        listtag.add(mobeffectinstance.save());
         this.getPersistentData().put("CustomPotionEffects", listtag);
 
     }
 
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
 
-        this.entityData.define(IT_FIRED, false);
+        builder.define(IT_FIRED, false);
     }
 
     public void doFire() {
@@ -50,10 +48,6 @@ public class EntityHeavyRainSwords extends EntityAbstractSummonedSword {
 
     public boolean itFired() {
         return this.getEntityData().get(IT_FIRED);
-    }
-
-    public static EntityHeavyRainSwords createInstance(PlayMessages.SpawnEntity packet, Level worldIn) {
-        return new EntityHeavyRainSwords(SlashBlade.RegistryEvents.HeavyRainSwords, worldIn);
     }
 
     long fireTime = -1;
@@ -88,9 +82,7 @@ public class EntityHeavyRainSwords extends EntityAbstractSummonedSword {
 
         // this.startRiding()
         this.setDeltaMovement(Vec3.ZERO);
-        if (canUpdate()) {
-            this.baseTick();
-        }
+        this.baseTick();
 
         faceEntityStandby();
         // this.getVehicle().positionRider(this);

@@ -14,8 +14,8 @@ import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
 
 import java.awt.*;
@@ -23,9 +23,9 @@ import java.awt.*;
 @OnlyIn(Dist.CLIENT)
 public class JudgementCutRenderer<T extends EntityJudgementCut> extends EntityRenderer<T> {
 
-    static private final ResourceLocation modelLocation = new ResourceLocation(SlashBlade.MODID,
+    static private final ResourceLocation modelLocation = ResourceLocation.fromNamespaceAndPath(SlashBlade.MODID,
             "model/util/slashdim.obj");
-    static private final ResourceLocation textureLocation = new ResourceLocation(SlashBlade.MODID,
+    static private final ResourceLocation textureLocation = ResourceLocation.fromNamespaceAndPath(SlashBlade.MODID,
             "model/util/slashdim.png");
 
     @Override
@@ -38,14 +38,14 @@ public class JudgementCutRenderer<T extends EntityJudgementCut> extends EntityRe
     }
 
     @Override
-    public void render(T entity, float entityYaw, float partialTicks, PoseStack matrixStackIn,
+    public void render(T entity, float entityYRot, float partialTick, PoseStack matrixStackIn,
                        @NotNull MultiBufferSource bufferIn, int packedLightIn) {
 
         try (MSAutoCloser msac = MSAutoCloser.pushMatrix(matrixStackIn)) {
 
             matrixStackIn
-                    .mulPose(Axis.YP.rotationDegrees(Mth.lerp(partialTicks, entity.yRotO, entity.getYRot()) - 90.0F));
-            matrixStackIn.mulPose(Axis.ZP.rotationDegrees(Mth.lerp(partialTicks, entity.xRotO, entity.getXRot())));
+                    .mulPose(Axis.YP.rotationDegrees(Mth.lerp(partialTick, entity.yRotO, entity.getYRot()) - 90.0F));
+            matrixStackIn.mulPose(Axis.ZP.rotationDegrees(Mth.lerp(partialTick, entity.xRotO, entity.getXRot())));
 
             WavefrontObject model = BladeModelManager.getInstance().getModel(modelLocation);
 
@@ -53,8 +53,8 @@ public class JudgementCutRenderer<T extends EntityJudgementCut> extends EntityRe
 
             double deathTime = lifetime;
             // double baseAlpha = Math.sin(Math.PI * 0.5 * (Math.min(deathTime, Math.max(0,
-            // (lifetime - (entity.ticksExisted) - partialTicks))) / deathTime));
-            double baseAlpha = (Math.min(deathTime, Math.max(0, (lifetime - (entity.tickCount) - partialTicks)))
+            // (lifetime - (entity.ticksExisted) - partialTick))) / deathTime));
+            double baseAlpha = (Math.min(deathTime, Math.max(0, (lifetime - (entity.tickCount) - partialTick)))
                     / deathTime);
             baseAlpha = -Math.pow(baseAlpha - 1, 4.0) + 1.0;
 
@@ -84,7 +84,7 @@ public class JudgementCutRenderer<T extends EntityJudgementCut> extends EntityRe
             for (int l = 0; l < loop; l++) {
                 try (MSAutoCloser msacB = MSAutoCloser.pushMatrix(matrixStackIn)) {
                     float cycleTicks = 15;
-                    float wave = (entity.tickCount + (cycleTicks / (float) loop * l) + partialTicks) % cycleTicks;
+                    float wave = (entity.tickCount + (cycleTicks / (float) loop * l) + partialTick) % cycleTicks;
                     float waveScale = 1.0f + 0.03f * wave;
                     matrixStackIn.scale(waveScale, waveScale, waveScale);
 
@@ -110,7 +110,7 @@ public class JudgementCutRenderer<T extends EntityJudgementCut> extends EntityRe
 
                     double motionLen = offsetBase * (windCount - 1);
 
-                    double ticks = entity.tickCount + partialTicks + seed;
+                    double ticks = entity.tickCount + partialTick + seed;
                     double offsetTicks = ticks + offset;
                     double progress = (offsetTicks % motionLen) / motionLen;
 

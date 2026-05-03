@@ -5,9 +5,8 @@ import mods.flammpfeil.slashblade.capability.concentrationrank.CapabilityConcent
 import mods.flammpfeil.slashblade.capability.concentrationrank.IConcentrationRank;
 import mods.flammpfeil.slashblade.capability.inputstate.CapabilityInputState;
 import mods.flammpfeil.slashblade.capability.inputstate.IInputState;
-import mods.flammpfeil.slashblade.capability.slashblade.CapabilitySlashBlade;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import mods.flammpfeil.slashblade.capability.slashblade.ISlashBladeState;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.registry.ComboStateRegistry;
 import mods.flammpfeil.slashblade.registry.combo.ComboState;
 import mods.flammpfeil.slashblade.util.AdvancementHelper;
@@ -17,6 +16,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
@@ -24,10 +24,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.event.entity.living.LivingAttackEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 
 import java.util.EnumSet;
 
@@ -44,32 +43,32 @@ public class Guard {
     }
 
     public void register() {
-        MinecraftForge.EVENT_BUS.register(this);
+        NeoForge.EVENT_BUS.register(this);
     }
 
-    static public final ResourceLocation ADVANCEMENT_GUARD = new ResourceLocation(SlashBlade.MODID, "abilities/guard");
-    static public final ResourceLocation ADVANCEMENT_GUARD_JUST = new ResourceLocation(SlashBlade.MODID,
+    static public final ResourceLocation ADVANCEMENT_GUARD = ResourceLocation.fromNamespaceAndPath(SlashBlade.MODID, "abilities/guard");
+    static public final ResourceLocation ADVANCEMENT_GUARD_JUST = ResourceLocation.fromNamespaceAndPath(SlashBlade.MODID,
             "abilities/guard_just");
 
     final static EnumSet<InputCommand> move = EnumSet.of(InputCommand.FORWARD, InputCommand.BACK, InputCommand.LEFT,
             InputCommand.RIGHT);
 
     @SubscribeEvent
-    public void onLivingAttack(LivingAttackEvent event) {
+    public void onLivingAttack(LivingIncomingDamageEvent event) {
         LivingEntity victim = event.getEntity();
         DamageSource source = event.getSource();
 
         // begin executable check -----------------
         // item check
         ItemStack stack = victim.getMainHandItem();
-        LazyOptional<ISlashBladeState> slashBlade = stack.getCapability(CapabilitySlashBlade.BLADESTATE);
-        if (!slashBlade.isPresent()) {
+        var slashBlade = BladeStateAccess.of(stack);
+        if (slashBlade.isEmpty()) {
             return;
         }
         if (slashBlade.filter(ISlashBladeState::isBroken).isPresent()) {
             return;
         }
-        if (stack.getEnchantmentLevel(Enchantments.THORNS) <= 0) {
+        if (stack.getEnchantmentLevel(victim.level().registryAccess().holderOrThrow(Enchantments.THORNS)) <= 0) {
             return;
         }
 
@@ -77,22 +76,22 @@ public class Guard {
         if (!victim.onGround()) {
             return;
         }
-        LazyOptional<IInputState> input = victim.getCapability(CapabilityInputState.INPUT_STATE);
-        if (!input.isPresent()) {
+        IInputState input = victim.getData(CapabilityInputState.INPUT_STATE.get());
+        if (input == null) {
             return;
         }
 
         // commanc check
         InputCommand targetCommand = InputCommand.SNEAK;
-        boolean handleCommand = input.filter(i -> i.getCommands().contains(targetCommand)
-                && i.getCommands().stream().noneMatch(move::contains)).isPresent();
+        boolean handleCommand = input.getCommands().contains(targetCommand)
+                && input.getCommands().stream().noneMatch(move::contains);
 
         if (handleCommand) {
             AdvancementHelper.grantCriterion(victim, ADVANCEMENT_GUARD);
         }
 
         // ninja run
-        handleCommand |= (input.filter(i -> i.getCommands().contains(InputCommand.SPRINT)).isPresent()
+        handleCommand |= (input.getCommands().contains(InputCommand.SPRINT)
                 && victim.isSprinting());
 
         if (!handleCommand) {
@@ -106,22 +105,22 @@ public class Guard {
 
         // performance branch -----------------
         // just check
-        long timeStartPress = input.map(i -> i.getLastPressTime(targetCommand)).orElse(-1L);
+        long timeStartPress = input.getLastPressTime(targetCommand);
         long timeCurrent = victim.level().getGameTime();
 
-        int soulSpeedLevel = EnchantmentHelper.getEnchantmentLevel(Enchantments.SOUL_SPEED, victim);
+        int soulSpeedLevel = EnchantmentHelper.getEnchantmentLevel(victim.level().registryAccess().holderOrThrow(Enchantments.SOUL_SPEED), victim);
         int justAcceptancePeriod = 5 + soulSpeedLevel;
 
         boolean isJust = false;
         if (timeCurrent - timeStartPress < justAcceptancePeriod) {
             isJust = true;
-            AdvancementHelper.grantedIf(Enchantments.SOUL_SPEED, victim);
+            AdvancementHelper.grantedIf(victim.level().registryAccess().holderOrThrow(Enchantments.SOUL_SPEED).value(), victim);
         }
 
         // rank check
         boolean isHighRank = false;
-        LazyOptional<IConcentrationRank> rank = victim.getCapability(CapabilityConcentrationRank.RANK_POINT);
-        if (rank.filter(r -> IConcentrationRank.ConcentrationRanks.S.level <= r.getRank(timeCurrent).level).isPresent()) {
+        IConcentrationRank rank = victim.getData(CapabilityConcentrationRank.RANK_POINT.get());
+        if (rank != null && IConcentrationRank.ConcentrationRanks.S.level <= rank.getRank(timeCurrent).level) {
             isHighRank = true;
         }
 
@@ -140,9 +139,9 @@ public class Guard {
 
             boolean inMotion = slashBlade.filter(s -> {
                 ResourceLocation current = s.resolvCurrentComboState(victim);
-                ComboState currentCS = ComboStateRegistry.REGISTRY.get().getValue(current);
+                ComboState currentCS = ComboStateRegistry.REGISTRY.get(current);
                 if (currentCS != null) {
-                    return !current.equals(ComboStateRegistry.NONE.getId()) && current == currentCS.getNext(victim);
+                    return !current.equals(ComboStateRegistry.NONE.getId()) && current.equals(currentCS.getNext(victim));
                 }
                 return false;
             }).isPresent();
@@ -181,7 +180,9 @@ public class Guard {
 
         // rankup
         if (isJust) {
-            rank.ifPresent(r -> r.addRankPoint(victim.level().damageSources().thorns(victim)));
+            if (rank != null) {
+                rank.addRankPoint(victim.level().damageSources().thorns(victim));
+            }
         }
 
         // play sound
@@ -197,7 +198,7 @@ public class Guard {
 
         // cost-------------------------
         if (!isJust && !isHighRank) {
-            slashBlade.ifPresent(s -> stack.hurtAndBreak(1, victim, ItemSlashBlade.getOnBroken(stack)));
+            slashBlade.ifPresent(s -> stack.hurtAndBreak(1, victim, EquipmentSlot.MAINHAND));
         }
 
     }

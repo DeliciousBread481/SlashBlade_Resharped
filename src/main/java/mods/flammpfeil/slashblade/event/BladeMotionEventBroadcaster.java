@@ -1,11 +1,10 @@
 package mods.flammpfeil.slashblade.event;
 
 import mods.flammpfeil.slashblade.network.MotionBroadcastMessage;
-import mods.flammpfeil.slashblade.network.NetworkManager;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.network.PacketDistributor;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 public class BladeMotionEventBroadcaster {
 
@@ -21,7 +20,7 @@ public class BladeMotionEventBroadcaster {
     }
 
     public void register() {
-        MinecraftForge.EVENT_BUS.register(this);
+        NeoForge.EVENT_BUS.register(this);
     }
 
     @SubscribeEvent
@@ -30,15 +29,7 @@ public class BladeMotionEventBroadcaster {
             return;
         }
 
-        MotionBroadcastMessage msg = new MotionBroadcastMessage();
-        msg.playerId = sp.getUUID();
-        msg.combo = event.getCombo().toString();
-
-        // if(msg.combo == Extra.EX_JUDGEMENT_CUT.getName())
-        {
-            NetworkManager.INSTANCE.send(PacketDistributor.NEAR.with(() -> new PacketDistributor.TargetPoint(sp.getX(),
-                    sp.getY(), sp.getZ(), 20, sp.serverLevel().dimension())), msg);
-        }
-
+        PacketDistributor.sendToPlayersNear(sp.serverLevel(), null, sp.getX(), sp.getY(), sp.getZ(), 20,
+                new MotionBroadcastMessage(sp.getUUID(), event.getCombo(), event.getActionTime()));
     }
 }

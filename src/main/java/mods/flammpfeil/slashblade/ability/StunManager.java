@@ -1,15 +1,14 @@
 package mods.flammpfeil.slashblade.ability;
 
 import mods.flammpfeil.slashblade.capability.mobeffect.CapabilityMobEffect;
-import mods.flammpfeil.slashblade.capability.mobeffect.IMobEffectState;
 import mods.flammpfeil.slashblade.entity.ai.StunGoal;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.event.entity.EntityJoinLevelEvent;
-import net.minecraftforge.event.entity.living.LivingEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
+import net.neoforged.neoforge.event.tick.EntityTickEvent;
 
 /**
  * Created by Furia on 15/06/20.
@@ -28,14 +27,16 @@ public class StunManager {
     }
 
     @SubscribeEvent
-    public void onEntityLivingUpdate(LivingEvent.LivingTickEvent event) {
-        LivingEntity target = event.getEntity();
+    public void onEntityLivingUpdate(EntityTickEvent.Post event) {
+        if (!(event.getEntity() instanceof LivingEntity target)) {
+            return;
+        }
         if (!(target instanceof PathfinderMob)) {
             return;
         }
 
-        boolean onStun = target.getCapability(CapabilityMobEffect.MOB_EFFECT)
-                .filter((state) -> state.isStun(target.level().getGameTime())).isPresent();
+        var effect = target.getData(CapabilityMobEffect.MOB_EFFECT.get());
+        boolean onStun = effect != null && effect.isStun(target.level().getGameTime());
 
         if (onStun) {
             Vec3 motion = target.getDeltaMovement();
@@ -61,11 +62,17 @@ public class StunManager {
             return;
         }
 
-        target.getCapability(CapabilityMobEffect.MOB_EFFECT).ifPresent((state) -> state.setManagedStun(target.level().getGameTime(), duration));
+        var effect = target.getData(CapabilityMobEffect.MOB_EFFECT.get());
+        if (effect != null) {
+            effect.setManagedStun(target.level().getGameTime(), duration);
+        }
     }
 
     public static void removeStun(LivingEntity target) {
 
-        target.getCapability(CapabilityMobEffect.MOB_EFFECT).ifPresent(IMobEffectState::clearStunTimeOut);
+        var effect = target.getData(CapabilityMobEffect.MOB_EFFECT.get());
+        if (effect != null) {
+            effect.clearStunTimeOut();
+        }
     }
 }

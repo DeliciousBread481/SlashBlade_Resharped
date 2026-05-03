@@ -2,8 +2,8 @@ package mods.flammpfeil.slashblade.event;
 
 import mods.flammpfeil.slashblade.registry.slashblade.SlashBladeDefinition;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.eventbus.api.Cancelable;
-import net.minecraftforge.eventbus.api.Event;
+import net.neoforged.bus.api.ICancellableEvent;
+import net.neoforged.bus.api.Event;
 
 public abstract class SlashBladeRegistryEvent extends Event {
     private final SlashBladeDefinition definition;
@@ -16,8 +16,7 @@ public abstract class SlashBladeRegistryEvent extends Event {
         return definition;
     }
 
-    @Cancelable
-    public static class Pre extends SlashBladeRegistryEvent {
+    public static class Pre extends SlashBladeRegistryEvent implements ICancellableEvent {
         public Pre(SlashBladeDefinition definition) {
             super(definition);
         }

@@ -71,7 +71,7 @@ public class SlashBladeSmithingEmiRecipe extends EMISimpleRecipe {
         Minecraft minecraft = Minecraft.getInstance();
         ClientLevel level = minecraft.level;
         if (level == null) {
-            throw new NullPointerException("level must not be null.");
+            return ItemStack.EMPTY;
         }
         RegistryAccess registryAccess = level.registryAccess();
         return recipe.assemble(input, registryAccess);
@@ -102,7 +102,9 @@ public class SlashBladeSmithingEmiRecipe extends EMISimpleRecipe {
         // 添加物品槽位
         widgets.addSlot(inputs.get(2), 36, 0);
         // 输出槽位
-        widgets.addSlot(outputs.get(0), 94, 0).recipeContext(this);
+        if (!outputs.isEmpty()) {
+            widgets.addSlot(outputs.get(0), 94, 0).recipeContext(this);
+        }
     }
 
     public SlashBladeSmithingRecipe getRecipe() {

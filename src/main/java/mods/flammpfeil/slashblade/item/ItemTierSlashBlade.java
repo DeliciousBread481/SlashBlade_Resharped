@@ -1,8 +1,11 @@
 package mods.flammpfeil.slashblade.item;
 
 import mods.flammpfeil.slashblade.data.tag.SlashBladeItemTags;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Tier;
 import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.level.block.Block;
 import org.jetbrains.annotations.NotNull;
 
 public class ItemTierSlashBlade implements Tier {
@@ -31,13 +34,13 @@ public class ItemTierSlashBlade implements Tier {
     }
 
     @Override
-    public int getLevel() {
-        return 3;
+    public int getEnchantmentValue() {
+        return 10;
     }
 
     @Override
-    public int getEnchantmentValue() {
-        return 10;
+    public TagKey<Block> getIncorrectBlocksForDrops() {
+        return BlockTags.INCORRECT_FOR_IRON_TOOL;
     }
 
     @Override

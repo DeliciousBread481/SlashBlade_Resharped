@@ -2,13 +2,12 @@ package mods.flammpfeil.slashblade.event;
 
 import mods.flammpfeil.slashblade.capability.slashblade.ISlashBladeState;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.event.AnvilUpdateEvent;
-import net.minecraftforge.eventbus.api.Cancelable;
+import net.neoforged.neoforge.event.AnvilUpdateEvent;
+import net.neoforged.bus.api.ICancellableEvent;
 
 import javax.annotation.Nullable;
 
-@Cancelable
-public class RefineProgressEvent extends SlashBladeEvent {
+public class RefineProgressEvent extends SlashBladeEvent implements ICancellableEvent {
     private final AnvilUpdateEvent originalEvent;
     private int materialCost;
     private int levelCost;

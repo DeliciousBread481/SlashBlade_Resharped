@@ -1,29 +1,41 @@
 package mods.flammpfeil.slashblade.recipe;
 
-import com.google.common.collect.Maps;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParseException;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
-import net.minecraft.core.RegistryAccess;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.GsonHelper;
-import net.minecraft.world.inventory.CraftingContainer;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.*;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class ProudsoulShapelessRecipe extends ShapelessRecipe {
 
-    public ProudsoulShapelessRecipe(ResourceLocation p_251840_, String p_249640_, CraftingBookCategory p_249390_,
-                                    ItemStack p_252071_, NonNullList<Ingredient> p_250689_) {
-        super(p_251840_, p_249640_, p_249390_, p_252071_, p_250689_);
+    private final ItemStack resultStack;
+
+    public ProudsoulShapelessRecipe(String p_249640_, CraftingBookCategory p_249390_,
+                                    ItemStack p_252071_, List<Ingredient> p_250689_) {
+        super(p_249640_, p_249390_, p_252071_, toNonNullList(p_250689_));
+        this.resultStack = p_252071_;
+    }
+
+    private static NonNullList<Ingredient> toNonNullList(List<Ingredient> list) {
+        NonNullList<Ingredient> nnl = NonNullList.createWithCapacity(list.size());
+        nnl.addAll(list);
+        return nnl;
     }
 
     public static final RecipeSerializer<ProudsoulShapelessRecipe> SERIALIZER = new ProudsoulShapelessRecipe.Serializer();
@@ -34,12 +46,12 @@ public class ProudsoulShapelessRecipe extends ShapelessRecipe {
     }
 
     @Override
-    public @NotNull ItemStack assemble(@NotNull CraftingContainer container, @NotNull RegistryAccess access) {
-        ItemStack result = super.assemble(container, access);
-        Map<Enchantment, Integer> all = Maps.newHashMap();
+    public @NotNull ItemStack assemble(@NotNull CraftingInput input, @NotNull HolderLookup.Provider access) {
+        ItemStack result = super.assemble(input, access);
+        HolderLookup.RegistryLookup<Enchantment> lookup = access.lookupOrThrow(Registries.ENCHANTMENT);
+        ItemEnchantments.Mutable all = new ItemEnchantments.Mutable(ItemEnchantments.EMPTY);
 
-        for (int idx = 0; idx < container.getContainerSize(); idx++) {
-            ItemStack stack = container.getItem(idx);
+        for (ItemStack stack : input.items()) {
             if (stack.isEmpty()) {
                 continue;
             }
@@ -47,25 +59,29 @@ public class ProudsoulShapelessRecipe extends ShapelessRecipe {
                 continue;
             }
 
-            Map<Enchantment, Integer> emap = EnchantmentHelper.getEnchantments(stack);
-            all.putAll(emap);
+            ItemEnchantments emap = stack.getAllEnchantments(lookup);
+            for (var entry : emap.entrySet()) {
+                int existing = all.getLevel(entry.getKey());
+                all.set(entry.getKey(), Math.max(existing, entry.getIntValue()));
+            }
         }
 
-        EnchantmentHelper.setEnchantments(all, result);
+        EnchantmentHelper.setEnchantments(result, all.toImmutable());
         return result;
     }
 
     @Override
-    public boolean matches(@NotNull CraftingContainer container, @NotNull Level level) {
-        boolean result = super.matches(container, level);
+    public boolean matches(@NotNull CraftingInput input, @NotNull Level level) {
+        boolean result = super.matches(input, level);
 
         if (result) {
-            Map<Enchantment, Integer> all = Maps.newHashMap();
+            HolderLookup.Provider provider = (HolderLookup.Provider) level.registryAccess();
+            HolderLookup.RegistryLookup<Enchantment> lookup = provider.lookupOrThrow(Registries.ENCHANTMENT);
+            Map<Holder<Enchantment>, Integer> all = new HashMap<>();
 
             int soulCount = 0;
 
-            for (int idx = 0; idx < container.getContainerSize(); idx++) {
-                ItemStack stack = container.getItem(idx);
+            for (ItemStack stack : input.items()) {
                 if (stack.isEmpty()) {
                     continue;
                 }
@@ -75,24 +91,17 @@ public class ProudsoulShapelessRecipe extends ShapelessRecipe {
 
                 soulCount++;
 
-                Map<Enchantment, Integer> emap = EnchantmentHelper.getEnchantments(stack);
+                ItemEnchantments emap = stack.getAllEnchantments(lookup);
 
-                for (Map.Entry<Enchantment, Integer> entry : emap.entrySet()) {
-                    if (all.containsKey(entry.getKey())) {
-
-                        int value = all.get(entry.getKey()) + entry.getValue();
-
-                        all.put(entry.getKey(), value);
-                    } else {
-                        all.put(entry.getKey(), entry.getValue());
-                    }
+                for (var entry : emap.entrySet()) {
+                    all.merge(entry.getKey(), entry.getIntValue(), Integer::sum);
                 }
             }
 
             result = all.size() == 1 || all.isEmpty();
             if (result) {
-                for (Map.Entry<Enchantment, Integer> entry : all.entrySet()) {
-                    result = entry.getValue() == soulCount;
+                for (int value : all.values()) {
+                    result = value == soulCount;
                 }
             }
         }
@@ -100,59 +109,29 @@ public class ProudsoulShapelessRecipe extends ShapelessRecipe {
         return result;
     }
 
+    ItemStack getResultStack() {
+        return resultStack;
+    }
+
     public static class Serializer implements RecipeSerializer<ProudsoulShapelessRecipe> {
+        public static final MapCodec<ProudsoulShapelessRecipe> CODEC = RecordCodecBuilder.mapCodec(inst -> inst.group(
+                Codec.STRING.optionalFieldOf("group", "").forGetter(r -> r.getGroup()),
+                CraftingBookCategory.CODEC.fieldOf("category").orElse(CraftingBookCategory.MISC).forGetter(r -> r.category()),
+                ItemStack.CODEC.fieldOf("result").forGetter(ProudsoulShapelessRecipe::getResultStack),
+                Ingredient.CODEC.listOf().fieldOf("ingredients").forGetter(r -> r.getIngredients())
+        ).apply(inst, ProudsoulShapelessRecipe::new));
+
+        public static final StreamCodec<RegistryFriendlyByteBuf, ProudsoulShapelessRecipe> STREAM_CODEC =
+                ByteBufCodecs.fromCodecWithRegistries(CODEC.codec());
+
         @Override
-        public @NotNull ProudsoulShapelessRecipe fromJson(@NotNull ResourceLocation p_44290_, @NotNull JsonObject p_44291_) {
-            String s = GsonHelper.getAsString(p_44291_, "group", "");
-            @SuppressWarnings("deprecation")
-            CraftingBookCategory craftingbookcategory = CraftingBookCategory.CODEC
-                    .byName(GsonHelper.getAsString(p_44291_, "category", null), CraftingBookCategory.MISC);
-            NonNullList<Ingredient> nonnulllist = itemsFromJson(GsonHelper.getAsJsonArray(p_44291_, "ingredients"));
-            if (nonnulllist.isEmpty()) {
-                throw new JsonParseException("No ingredients for shapeless recipe");
-            } else if (nonnulllist.size() > 3 * 3) {
-                throw new JsonParseException("Too many ingredients for shapeless recipe. The maximum is " + (3 * 3));
-            } else {
-                ItemStack itemstack = ShapedRecipe.itemStackFromJson(GsonHelper.getAsJsonObject(p_44291_, "result"));
-                return new ProudsoulShapelessRecipe(p_44290_, s, craftingbookcategory, itemstack, nonnulllist);
-            }
-        }
-
-        private static NonNullList<Ingredient> itemsFromJson(JsonArray p_44276_) {
-            NonNullList<Ingredient> nonnulllist = NonNullList.create();
-
-            for (int i = 0; i < p_44276_.size(); ++i) {
-                Ingredient ingredient = Ingredient.fromJson(p_44276_.get(i), false);
-                nonnulllist.add(ingredient);
-            }
-
-            return nonnulllist;
+        public MapCodec<ProudsoulShapelessRecipe> codec() {
+            return CODEC;
         }
 
         @Override
-        public ProudsoulShapelessRecipe fromNetwork(@NotNull ResourceLocation p_44293_, FriendlyByteBuf p_44294_) {
-            String s = p_44294_.readUtf();
-            CraftingBookCategory craftingbookcategory = p_44294_.readEnum(CraftingBookCategory.class);
-            int i = p_44294_.readVarInt();
-            NonNullList<Ingredient> nonnulllist = NonNullList.withSize(i, Ingredient.EMPTY);
-
-            nonnulllist.replaceAll(ignored -> Ingredient.fromNetwork(p_44294_));
-
-            ItemStack itemstack = p_44294_.readItem();
-            return new ProudsoulShapelessRecipe(p_44293_, s, craftingbookcategory, itemstack, nonnulllist);
-        }
-
-        @Override
-        public void toNetwork(FriendlyByteBuf p_44281_, ProudsoulShapelessRecipe p_44282_) {
-            p_44281_.writeUtf(p_44282_.getGroup());
-            p_44281_.writeEnum(p_44282_.category());
-            p_44281_.writeVarInt(p_44282_.getIngredients().size());
-
-            for (Ingredient ingredient : p_44282_.getIngredients()) {
-                ingredient.toNetwork(p_44281_);
-            }
-
-            p_44281_.writeItem(p_44282_.getResultItem(null));
+        public StreamCodec<RegistryFriendlyByteBuf, ProudsoulShapelessRecipe> streamCodec() {
+            return STREAM_CODEC;
         }
     }
 

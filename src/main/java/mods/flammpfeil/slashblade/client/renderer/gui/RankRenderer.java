@@ -11,11 +11,11 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.event.RenderGuiOverlayEvent;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.client.event.RenderGuiEvent;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.bus.api.SubscribeEvent;
 import org.joml.Matrix4f;
 
 @OnlyIn(Dist.CLIENT)
@@ -32,14 +32,14 @@ public class RankRenderer {
     }
 
     public void register() {
-        MinecraftForge.EVENT_BUS.register(this);
+        NeoForge.EVENT_BUS.register(this);
     }
 
-    static ResourceLocation RankImg = new ResourceLocation(SlashBlade.MODID, "textures/gui/rank.png");
+    static ResourceLocation RankImg = ResourceLocation.fromNamespaceAndPath(SlashBlade.MODID, "textures/gui/rank.png");
 
     @SubscribeEvent
     @OnlyIn(Dist.CLIENT)
-    public void renderTick(RenderGuiOverlayEvent.Post event) {
+    public void renderTick(RenderGuiEvent.Post event) {
 
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) {
@@ -58,13 +58,13 @@ public class RankRenderer {
         LocalPlayer player = mc.player;
         long time = System.currentTimeMillis();
 
-        renderRankHud(event.getPartialTick(), player, time);
+        renderRankHud(event.getPartialTick().getGameTimeDeltaPartialTick(true), player, time);
     }
 
     private void renderRankHud(Float partialTicks, LocalPlayer player, long time) {
         Minecraft mc = Minecraft.getInstance();
 
-        player.getCapability(CapabilityConcentrationRank.RANK_POINT).ifPresent(cr -> {
+        IConcentrationRank cr = player.getData(CapabilityConcentrationRank.RANK_POINT.get()); {
             long now = player.level().getGameTime();
 
             IConcentrationRank.ConcentrationRanks rank = cr.getRank(now);
@@ -125,7 +125,7 @@ public class RankRenderer {
                 drawTexturedQuad(poseStack, 16, 32, 16, 256 - 32, progress, 16, -95f);
             }
 
-        });
+        }
 
     }
 
@@ -135,18 +135,14 @@ public class RankRenderer {
         float var8 = 0.00390625F;
         RenderSystem.setShader(GameRenderer::getPositionTexShader);
 
-        Tesselator tessellator = Tesselator.getInstance();
-        BufferBuilder wr = tessellator.getBuilder();
-        wr.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
-
         Matrix4f m = poseStack.last().pose();
 
-        wr.vertex(m, x, y + height, zLevel).uv((u + 0.0f) * var7, (v + height) * var8).endVertex();
-        wr.vertex(m, x + width, y + height, zLevel).uv((u + width) * var7, (v + height) * var8).endVertex();
-        wr.vertex(m, x + width, y, zLevel).uv((u + width) * var7, (v) * var8).endVertex();
-        wr.vertex(m, x, y, zLevel).uv((u) * var7, (v) * var8).endVertex();
+        BufferBuilder wr = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
+        wr.addVertex(m, x, y + height, zLevel).setUv((u + 0.0f) * var7, (v + height) * var8);
+        wr.addVertex(m, x + width, y + height, zLevel).setUv((u + width) * var7, (v + height) * var8);
+        wr.addVertex(m, x + width, y, zLevel).setUv((u + width) * var7, (v) * var8);
+        wr.addVertex(m, x, y, zLevel).setUv((u) * var7, (v) * var8);
 
-        // tessellator.end();
-        BufferUploader.drawWithShader(wr.end());
+        BufferUploader.drawWithShader(wr.build());
     }
 }

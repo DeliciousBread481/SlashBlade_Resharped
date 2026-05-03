@@ -1,10 +1,9 @@
 package mods.flammpfeil.slashblade.item;
 
 import com.mojang.serialization.Codec;
-import mods.flammpfeil.slashblade.capability.slashblade.ISlashBladeState;
-import net.minecraft.nbt.CompoundTag;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.common.util.LazyOptional;
 
 import java.util.EnumSet;
 
@@ -17,33 +16,32 @@ public enum SwordType {
     public static EnumSet<SwordType> from(ItemStack itemStackIn) {
         EnumSet<SwordType> types = EnumSet.noneOf(SwordType.class);
 
-        LazyOptional<ISlashBladeState> state = itemStackIn.getCapability(ItemSlashBlade.BLADESTATE);
+        var state = BladeStateAccess.of(itemStackIn);
 
-        if (state.isPresent()) {
-            itemStackIn.getCapability(ItemSlashBlade.BLADESTATE).ifPresent(s -> {
-                if (s.isBroken() || getElement(itemStackIn).getBoolean("isBroken")) {
-                    types.add(BROKEN);
-                }
+        state.ifPresent(s -> {
+            if (s.isBroken()) {
+                types.add(BROKEN);
+            }
 
-                if (s.isSealed() || getElement(itemStackIn).getBoolean("isSealed")) {
-                    types.add(SEALED);
-                }
+            if (s.isSealed()) {
+                types.add(SEALED);
+            }
 
-                if (!s.isSealed() && itemStackIn.isEnchanted()
-                        && (itemStackIn.hasCustomHoverName() || s.isDefaultBewitched())) {
-                    types.add(BEWITCHED);
-                }
+            if (!s.isSealed() && itemStackIn.isEnchanted()
+                    && (itemStackIn.has(DataComponents.CUSTOM_NAME) || s.isDefaultBewitched())) {
+                types.add(BEWITCHED);
+            }
 
-                if (s.getKillCount() >= 1000) {
-                    types.add(FIERCEREDGE);
-                }
+            if (s.getKillCount() >= 1000) {
+                types.add(FIERCEREDGE);
+            }
 
-                if (s.getProudSoulCount() >= 10000) {
-                    types.add(SOULEATER);
-                }
+            if (s.getProudSoulCount() >= 10000) {
+                types.add(SOULEATER);
+            }
 
-            });
-        } else {
+        });
+        if (state.isEmpty()) {
             types.add(NOSCABBARD);
             types.add(EDGEFRAGMENT);
         }
@@ -57,16 +55,9 @@ public enum SwordType {
             types.remove(SwordType.BEWITCHED);
         }
 
-        if (itemStackIn.getOrCreateTag().getBoolean("Unbreakable")) {
+        if (itemStackIn.has(DataComponents.UNBREAKABLE)) {
             types.remove(SwordType.BROKEN);
         }
         return types;
-    }
-
-    private static CompoundTag getElement(ItemStack itemStackIn) {
-        if (itemStackIn.getOrCreateTag().contains("bladeState")) {
-            return itemStackIn.getTagElement("bladeState");
-        }
-        return new CompoundTag();
     }
 }

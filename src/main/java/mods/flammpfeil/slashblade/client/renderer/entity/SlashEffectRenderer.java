@@ -16,16 +16,16 @@ import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
 
 @OnlyIn(Dist.CLIENT)
 public class SlashEffectRenderer<T extends EntitySlashEffect> extends EntityRenderer<T> {
 
-    static private final ResourceLocation modelLocation = new ResourceLocation(SlashBlade.MODID,
+    static private final ResourceLocation modelLocation = ResourceLocation.fromNamespaceAndPath(SlashBlade.MODID,
             "model/util/slash.obj");
-    static private final ResourceLocation textureLocation = new ResourceLocation(SlashBlade.MODID,
+    static private final ResourceLocation textureLocation = ResourceLocation.fromNamespaceAndPath(SlashBlade.MODID,
             "model/util/slash.png");
 
     @Override
@@ -38,26 +38,26 @@ public class SlashEffectRenderer<T extends EntitySlashEffect> extends EntityRend
     }
 
     @Override
-    public void render(T entity, float entityYaw, float partialTicks, PoseStack matrixStackIn,
+    public void render(T entity, float entityYRot, float partialTick, PoseStack matrixStackIn,
                        @NotNull MultiBufferSource bufferIn, int packedLightIn) {
 
         try (MSAutoCloser msac = MSAutoCloser.pushMatrix(matrixStackIn)) {
 
             matrixStackIn
-                    .mulPose(Axis.YP.rotationDegrees(-Mth.lerp(partialTicks, entity.yRotO, entity.getYRot()) - 90.0F));
-            matrixStackIn.mulPose(Axis.ZP.rotationDegrees(Mth.lerp(partialTicks, entity.xRotO, entity.getXRot())));
+                    .mulPose(Axis.YP.rotationDegrees(-Mth.lerp(partialTick, entity.yRotO, entity.getYRot()) - 90.0F));
+            matrixStackIn.mulPose(Axis.ZP.rotationDegrees(Mth.lerp(partialTick, entity.xRotO, entity.getXRot())));
             matrixStackIn.mulPose(Axis.XP.rotationDegrees(entity.getRotationRoll()));
 
             WavefrontObject model = BladeModelManager.getInstance().getModel(modelLocation);
 
             int lifetime = entity.getLifetime();
 
-            float progress = Math.min(lifetime, (entity.tickCount + partialTicks)) / lifetime;
+            float progress = Math.min(lifetime, (entity.tickCount + partialTick)) / lifetime;
 
             double deathTime = lifetime;
             // double baseAlpha = Math.sin(Math.PI * 0.5 * (Math.min(deathTime, Math.max(0,
-            // (lifetime - (entity.ticksExisted) - partialTicks))) / deathTime));
-            double baseAlpha = (Math.min(deathTime, Math.max(0, (lifetime - (entity.tickCount) - partialTicks)))
+            // (lifetime - (entity.ticksExisted) - partialTick))) / deathTime));
+            double baseAlpha = (Math.min(deathTime, Math.max(0, (lifetime - (entity.tickCount) - partialTick)))
                     / deathTime);
             baseAlpha = -Math.pow(baseAlpha - 1, 4.0) + 1.0;
 

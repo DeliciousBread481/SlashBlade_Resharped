@@ -1,28 +1,21 @@
 package mods.flammpfeil.slashblade.network;
 
-import mods.flammpfeil.slashblade.SlashBlade;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.network.NetworkRegistry;
-import net.minecraftforge.network.simple.SimpleChannel;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
 public class NetworkManager {
 
     private static final String PROTOCOL_VERSION = "1";
 
-    public static final SimpleChannel INSTANCE = NetworkRegistry.newSimpleChannel(
-            new ResourceLocation(SlashBlade.MODID, "main"), () -> PROTOCOL_VERSION, PROTOCOL_VERSION::equals,
-            PROTOCOL_VERSION::equals);
+    private NetworkManager() {
+    }
 
-    public static void register() {
-        int id = 0;
-        INSTANCE.registerMessage(id++, MoveCommandMessage.class, MoveCommandMessage::encode, MoveCommandMessage::decode,
-                MoveCommandMessage::handle);
-
-        INSTANCE.registerMessage(id++, RankSyncMessage.class, RankSyncMessage::encode, RankSyncMessage::decode,
-                RankSyncMessage::handle);
-
-        INSTANCE.registerMessage(id++, MotionBroadcastMessage.class, MotionBroadcastMessage::encode,
-                MotionBroadcastMessage::decode, MotionBroadcastMessage::handle);
+    public static void register(RegisterPayloadHandlersEvent event) {
+        PayloadRegistrar registrar = event.registrar(PROTOCOL_VERSION);
+        registrar.playToServer(MoveCommandMessage.TYPE, MoveCommandMessage.STREAM_CODEC, MoveCommandMessage::handle);
+        registrar.playToClient(RankSyncMessage.TYPE, RankSyncMessage.STREAM_CODEC, RankSyncMessage::handle);
+        registrar.playToClient(MotionBroadcastMessage.TYPE, MotionBroadcastMessage.STREAM_CODEC,
+                MotionBroadcastMessage::handle);
     }
 
 }

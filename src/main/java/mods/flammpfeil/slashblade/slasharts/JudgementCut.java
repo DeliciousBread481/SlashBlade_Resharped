@@ -1,9 +1,10 @@
 package mods.flammpfeil.slashblade.slasharts;
 
-import mods.flammpfeil.slashblade.SlashBlade;
-import mods.flammpfeil.slashblade.capability.concentrationrank.ConcentrationRankCapabilityProvider;
+import mods.flammpfeil.slashblade.RegistryEvents;
+import mods.flammpfeil.slashblade.capability.concentrationrank.CapabilityConcentrationRank;
+import mods.flammpfeil.slashblade.capability.concentrationrank.IConcentrationRank;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import mods.flammpfeil.slashblade.entity.EntityJudgementCut;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.util.RayTraceHelper;
 import mods.flammpfeil.slashblade.util.TargetSelector;
 import net.minecraft.sounds.SoundEvents;
@@ -38,7 +39,7 @@ public class JudgementCut {
         final double entityReach = 7;
 
         ItemStack stack = user.getMainHandItem();
-        Optional<Vec3> resultPos = stack.getCapability(ItemSlashBlade.BLADESTATE)
+        Optional<Vec3> resultPos = BladeStateAccess.of(stack)
                 .filter(s -> s.getTargetEntity(worldIn) != null).map(s -> Objects.requireNonNull(s.getTargetEntity(worldIn)).getEyePosition(1.0f));
 
         if (resultPos.isEmpty()) {
@@ -64,13 +65,15 @@ public class JudgementCut {
         }
 
         Vec3 pos = resultPos.orElseGet(() -> eyePos.add(user.getLookAngle().scale(airReach)));
-        EntityJudgementCut jc = new EntityJudgementCut(SlashBlade.RegistryEvents.JudgementCut, worldIn);
+        EntityJudgementCut jc = new EntityJudgementCut(RegistryEvents.JudgementCut, worldIn);
         jc.setPos(pos.x, pos.y, pos.z);
         jc.setOwner(user);
-        stack.getCapability(ItemSlashBlade.BLADESTATE).ifPresent((state) -> jc.setColor(state.getColorCode()));
+        BladeStateAccess.of(stack).ifPresent((state) -> jc.setColor(state.getColorCode()));
 
-        user.getCapability(ConcentrationRankCapabilityProvider.RANK_POINT)
-                .ifPresent(rank -> jc.setRank(rank.getRankLevel(worldIn.getGameTime())));
+        IConcentrationRank rank1 = user.getData(CapabilityConcentrationRank.RANK_POINT.get());
+        if (rank1 != null) {
+            jc.setRank(rank1.getRankLevel(worldIn.getGameTime()));
+        }
 
         worldIn.addFreshEntity(jc);
 
@@ -97,13 +100,15 @@ public class JudgementCut {
             if (entity instanceof LivingEntity) {
 
                 ((LivingEntity) entity).addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 40, 10));
-                EntityJudgementCut judgementCut = new EntityJudgementCut(SlashBlade.RegistryEvents.JudgementCut, level);
+                EntityJudgementCut judgementCut = new EntityJudgementCut(RegistryEvents.JudgementCut, level);
                 judgementCut.setPos(entity.getX(), entity.getY(), entity.getZ());
                 judgementCut.setOwner(owner);
-                stack.getCapability(ItemSlashBlade.BLADESTATE)
+                BladeStateAccess.of(stack)
                         .ifPresent(state -> judgementCut.setColor(state.getColorCode()));
-                owner.getCapability(ConcentrationRankCapabilityProvider.RANK_POINT)
-                        .ifPresent(rank -> judgementCut.setRank(rank.getRankLevel(level.getGameTime())));
+                IConcentrationRank rank2 = owner.getData(CapabilityConcentrationRank.RANK_POINT.get());
+                if (rank2 != null) {
+                    judgementCut.setRank(rank2.getRankLevel(level.getGameTime()));
+                }
                 level.addFreshEntity(judgementCut);
             }
         }

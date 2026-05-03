@@ -15,7 +15,7 @@ import mods.flammpfeil.slashblade.SlashBlade;
 import mods.flammpfeil.slashblade.client.renderer.model.BladeMotionManager;
 import mods.flammpfeil.slashblade.util.TimeValueHelper;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.common.util.LazyOptional;
+import javax.annotation.Nullable;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Quaterniond;
 import org.joml.Vector3d;
@@ -26,28 +26,32 @@ import java.util.List;
 import java.util.Map;
 
 public class VmdAnimation implements IAnimation {
-    static final LazyOptional<MmdPmdModelMc> alex = LazyOptional.of(() -> {
+    @Nullable
+    static final MmdPmdModelMc alex;
+
+    @Nullable
+    static final MmdMotionPlayerGL2 motionPlayer;
+
+    static {
+        MmdPmdModelMc tmpAlex = null;
         try {
-            return new MmdPmdModelMc(new ResourceLocation(SlashBlade.MODID, "model/pa/alex.pmd"));
+            tmpAlex = new MmdPmdModelMc(ResourceLocation.fromNamespaceAndPath(SlashBlade.MODID, "model/pa/alex.pmd"));
         } catch (IOException | MmdException e) {
             SlashBlade.LOGGER.warn(e);
         }
-        return null;
-    });
+        alex = tmpAlex;
 
-    static final LazyOptional<MmdMotionPlayerGL2> motionPlayer = LazyOptional.of(() -> {
-        MmdMotionPlayerGL2 mmp = new MmdMotionPlayerGL2();
-
-        alex.ifPresent(pmd -> {
+        MmdMotionPlayerGL2 tmpMp = null;
+        if (alex != null) {
+            tmpMp = new MmdMotionPlayerGL2();
             try {
-                mmp.setPmd(pmd);
+                tmpMp.setPmd(alex);
             } catch (MmdException e) {
                 SlashBlade.LOGGER.warn(e);
             }
-        });
-
-        return mmp;
-    });
+        }
+        motionPlayer = tmpMp;
+    }
 
     int currentTick;
 
@@ -123,7 +127,11 @@ public class VmdAnimation implements IAnimation {
     }
 
     public void play() {
-        this.currentTick = 0;
+        play(0);
+    }
+
+    public void play(int ticks) {
+        this.currentTick = Math.max(0, ticks);
         this.isRunning = true;
     }
 
@@ -152,10 +160,10 @@ public class VmdAnimation implements IAnimation {
             blend.mul(0);
         }
 
-        if (!motionPlayer.isPresent()) {
+        if (motionPlayer == null) {
             return value0;
         }
-        MmdMotionPlayerGL2 mmp = motionPlayer.orElse(null);
+        MmdMotionPlayerGL2 mmp = motionPlayer;
 
         String boneName = modelName;
         if (nameMap.containsKey(modelName)) {
@@ -281,11 +289,11 @@ public class VmdAnimation implements IAnimation {
 
     @Override
     public void setupAnim(float tickDelta) {
-        if (!motionPlayer.isPresent()) {
+        if (motionPlayer == null) {
             return;
         }
 
-        MmdMotionPlayerGL2 mmp = motionPlayer.orElse(null);
+        MmdMotionPlayerGL2 mmp = motionPlayer;
 
         double eofTime = 0;
         MmdVmdMotionMc motion = BladeMotionManager.getInstance().getMotion(loc);

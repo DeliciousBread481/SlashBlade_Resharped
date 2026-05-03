@@ -11,8 +11,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.eventbus.api.Cancelable;
-import net.minecraftforge.eventbus.api.Event;
+import net.neoforged.bus.api.ICancellableEvent;
+import net.neoforged.bus.api.Event;
 
 public abstract class SlashBladeEvent extends Event {
     private final ItemStack blade;
@@ -31,8 +31,7 @@ public abstract class SlashBladeEvent extends Event {
         return state;
     }
 
-    @Cancelable
-    public static class BreakEvent extends SlashBladeEvent {
+    public static class BreakEvent extends SlashBladeEvent implements ICancellableEvent {
         public BreakEvent(ItemStack blade, ISlashBladeState state) {
             super(blade, state);
         }
@@ -58,6 +57,53 @@ public abstract class SlashBladeEvent extends Event {
 
         public LivingEntity getUser() {
             return user;
+        }
+
+    }
+    
+    public static class NextComboEvent extends SlashBladeEvent {
+    	private final LivingEntity user;
+        private ResourceLocation nextCombo;
+
+        public NextComboEvent(ItemStack blade, ISlashBladeState state, LivingEntity user, ResourceLocation combo) {
+            super(blade, state);
+            this.user = user;
+            this.setNextCombo(combo);
+        }
+        
+        public LivingEntity getUser() {
+            return user;
+        }
+
+        public ResourceLocation getNextCombo() {
+            return nextCombo;
+        }
+
+        public void setNextCombo(ResourceLocation nextCombo) {
+            this.nextCombo = nextCombo;
+        }
+
+    }
+    
+    public static class NextOfTimeOutComboEvent extends SlashBladeEvent {
+        private ResourceLocation nextCombo;
+        private final LivingEntity user;
+        public NextOfTimeOutComboEvent(ItemStack blade, ISlashBladeState state, LivingEntity user, ResourceLocation combo) {
+            super(blade, state);
+            this.user = user;
+            this.setNextCombo(combo);
+        }
+        
+        public LivingEntity getUser() {
+            return user;
+        }
+        
+        public ResourceLocation getNextCombo() {
+            return nextCombo;
+        }
+
+        public void setNextCombo(ResourceLocation nextCombo) {
+            this.nextCombo = nextCombo;
         }
 
     }
@@ -133,8 +179,7 @@ public abstract class SlashBladeEvent extends Event {
         }
     }
 
-    @Cancelable
-    public static class BladeStandAttackEvent extends SlashBladeEvent {
+    public static class BladeStandAttackEvent extends SlashBladeEvent implements ICancellableEvent {
         private final BladeStandEntity bladeStand;
         private final DamageSource damageSource;
 
@@ -168,8 +213,7 @@ public abstract class SlashBladeEvent extends Event {
 
     }
 
-    @Cancelable
-    public static class HitEvent extends SlashBladeEvent {
+    public static class HitEvent extends SlashBladeEvent implements ICancellableEvent {
         private final LivingEntity target;
         private final LivingEntity user;
 
@@ -189,8 +233,7 @@ public abstract class SlashBladeEvent extends Event {
 
     }
 
-    @Cancelable
-    public static class UpdateEvent extends SlashBladeEvent {
+    public static class UpdateEvent extends SlashBladeEvent implements ICancellableEvent {
         private final Level level;
         private final Entity entity;
         private final int itemSlot;
@@ -223,8 +266,7 @@ public abstract class SlashBladeEvent extends Event {
 
     }
 
-    @Cancelable
-    public static class DoSlashEvent extends SlashBladeEvent {
+    public static class DoSlashEvent extends SlashBladeEvent implements ICancellableEvent {
         private final LivingEntity user;
         private float roll;
         private boolean critical;
@@ -288,15 +330,14 @@ public abstract class SlashBladeEvent extends Event {
 
     }
 
-    @Cancelable
-    public static class ChargeActionEvent extends Event {
+    public static class PerformSlashArtEvent extends Event implements ICancellableEvent {
         private final LivingEntity entityLiving;
         private final int elapsed;
         private final ISlashBladeState state;
         private ResourceLocation comboState;
         private final SlashArts.ArtsType type;
 
-        public ChargeActionEvent(LivingEntity entityLiving, int elapsed, ISlashBladeState state, ResourceLocation comboState, SlashArts.ArtsType type) {
+        public PerformSlashArtEvent(LivingEntity entityLiving, int elapsed, ISlashBladeState state, ResourceLocation comboState, SlashArts.ArtsType type) {
             this.entityLiving = entityLiving;
             this.elapsed = elapsed;
             this.state = state;
@@ -327,6 +368,31 @@ public abstract class SlashBladeEvent extends Event {
         public SlashArts.ArtsType getType() {
             return type;
         }
+    }
+    
+    public static class ChargeActionEvent extends Event implements ICancellableEvent {
+        private final LivingEntity entityLiving;
+        private final int chargeTicks;
+        private final ISlashBladeState state;
+
+        public ChargeActionEvent(LivingEntity entityLiving, int chargeTicks, ISlashBladeState state) {
+            this.entityLiving = entityLiving;
+            this.chargeTicks = chargeTicks;
+            this.state = state;
+        }
+
+        public LivingEntity getEntityLiving() {
+            return entityLiving;
+        }
+
+        public int getChargeTicks() {
+            return chargeTicks;
+        }
+
+        public ISlashBladeState getSlashBladeState() {
+            return state;
+        }
+
     }
 
     public static class SummonedSwordOnHitEntityEvent extends Event {

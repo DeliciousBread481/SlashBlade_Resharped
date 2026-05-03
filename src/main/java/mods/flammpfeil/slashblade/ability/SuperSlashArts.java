@@ -1,8 +1,8 @@
 package mods.flammpfeil.slashblade.ability;
 
 import mods.flammpfeil.slashblade.capability.inputstate.CapabilityInputState;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import mods.flammpfeil.slashblade.event.handler.InputCommandEvent;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.item.SwordType;
 import mods.flammpfeil.slashblade.registry.ComboStateRegistry;
 import mods.flammpfeil.slashblade.registry.combo.ComboState;
@@ -13,9 +13,10 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.bus.api.SubscribeEvent;
 
 import java.util.EnumSet;
 import java.util.Map;
@@ -33,7 +34,7 @@ public class SuperSlashArts {
     }
 
     public void register() {
-        MinecraftForge.EVENT_BUS.register(this);
+        NeoForge.EVENT_BUS.register(this);
     }
 
     @SubscribeEvent
@@ -50,7 +51,8 @@ public class SuperSlashArts {
         final long pressTime = event.getState().getLastPressTime(targetCommnad);
         if (onDown) {
 
-            sender.getCapability(CapabilityInputState.INPUT_STATE).ifPresent(input -> {
+            var input = sender.getData(CapabilityInputState.INPUT_STATE.get());
+            if (input != null) {
                 input.getScheduler().schedule("sendPartical", pressTime + 5, (rawEntity, queue, now) -> {
 
                     if (!(rawEntity instanceof ServerPlayer entity)) {
@@ -58,17 +60,16 @@ public class SuperSlashArts {
                     }
 
                     InputCommand targetCommnad2 = InputCommand.SPRINT;
-                    boolean inputSucceed = entity.getCapability(CapabilityInputState.INPUT_STATE)
-                            .filter(input2 -> input2.getCommands().contains(targetCommnad2)
-                                    && (!InputCommand.anyMatch(input2.getCommands(), InputCommand.move)
-                                    || !input2.getCommands().contains(InputCommand.SNEAK))
-                                    && input2.getLastPressTime(targetCommnad2) == pressTime)
-                            .isPresent();
+                    var input2 = entity.getData(CapabilityInputState.INPUT_STATE.get());
+                    boolean inputSucceed = input2 != null && input2.getCommands().contains(targetCommnad2)
+                            && (!InputCommand.anyMatch(input2.getCommands(), InputCommand.move)
+                            || !input2.getCommands().contains(InputCommand.SNEAK))
+                            && input2.getLastPressTime(targetCommnad2) == pressTime;
                     if (!inputSucceed) {
                         return;
                     }
                     ItemStack mainHandItem = entity.getMainHandItem();
-                    mainHandItem.getCapability(ItemSlashBlade.BLADESTATE).ifPresent((state) -> {
+                    BladeStateAccess.of(mainHandItem).ifPresent((state) -> {
                         if (state.isBroken() || state.getDamage() > 0 || state.isSealed()
                                 || !SwordType.from(mainHandItem).contains(SwordType.BEWITCHED)
                                 || !SwordType.from(mainHandItem).contains(SwordType.FIERCEREDGE)) {
@@ -98,25 +99,24 @@ public class SuperSlashArts {
                     }
 
                     InputCommand targetCommnad1 = InputCommand.SPRINT;
-                    boolean inputSucceed = entity.getCapability(CapabilityInputState.INPUT_STATE)
-                            .filter(input1 -> input1.getCommands().contains(targetCommnad1)
-                                    && (!InputCommand.anyMatch(input1.getCommands(), InputCommand.move)
-                                    || !input1.getCommands().contains(InputCommand.SNEAK))
-                                    && input1.getLastPressTime(targetCommnad1) == pressTime)
-                            .isPresent();
+                    var input3 = entity.getData(CapabilityInputState.INPUT_STATE.get());
+                    boolean inputSucceed = input3 != null && input3.getCommands().contains(targetCommnad1)
+                            && (!InputCommand.anyMatch(input3.getCommands(), InputCommand.move)
+                            || !input3.getCommands().contains(InputCommand.SNEAK))
+                            && input3.getLastPressTime(targetCommnad1) == pressTime;
                     if (!inputSucceed) {
                         return;
                     }
 
                     releaseSSA(entity);
                 });
-            });
+            }
         }
     }
 
     public static void releaseSSA(ServerPlayer entity) {
         ItemStack mainHandItem = entity.getMainHandItem();
-        mainHandItem.getCapability(ItemSlashBlade.BLADESTATE).ifPresent((state) -> {
+        BladeStateAccess.of(mainHandItem).ifPresent((state) -> {
             if (state.isBroken() || state.getDamage() > 0 || state.isSealed()
                     || !SwordType.from(mainHandItem).contains(SwordType.BEWITCHED)
                     || !SwordType.from(mainHandItem).contains(SwordType.FIERCEREDGE)) {
@@ -128,15 +128,15 @@ public class SuperSlashArts {
             }
 
             mainHandItem.hurtAndBreak(mainHandItem.getMaxDamage() / 2, entity,
-                    ItemSlashBlade.getOnBroken(mainHandItem));
+                    EquipmentSlot.MAINHAND);
 
             Map.Entry<Integer, ResourceLocation> currentloc = state.resolvCurrentComboStateTicks(entity);
 
-            ComboState currentCS = ComboStateRegistry.REGISTRY.get().getValue(currentloc.getValue());
+            ComboState currentCS = ComboStateRegistry.REGISTRY.get(currentloc.getValue());
 
             ResourceLocation csloc = state.getSlashArts().doArts(SlashArts.ArtsType.Super, entity);
-            ComboState cs = ComboStateRegistry.REGISTRY.get().getValue(csloc);
-            if (csloc != ComboStateRegistry.NONE.getId() && !currentloc.getValue().equals(csloc)) {
+            ComboState cs = ComboStateRegistry.REGISTRY.get(csloc);
+            if (!ComboStateRegistry.NONE.getId().equals(csloc) && !currentloc.getValue().equals(csloc)) {
 
                 if (currentCS != null && cs != null && currentCS.getPriority() > cs.getPriority()) {
                     state.updateComboSeq(entity, csloc);

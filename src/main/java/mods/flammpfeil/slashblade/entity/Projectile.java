@@ -18,8 +18,8 @@ public abstract class Projectile extends net.minecraft.world.entity.projectile.P
     }
 
     @Override
-    protected void defineSynchedData() {
-        this.entityData.define(OWNERID, -1);
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        builder.define(OWNERID, -1);
     }
 
     @Nullable

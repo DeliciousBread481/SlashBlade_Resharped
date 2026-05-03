@@ -18,13 +18,13 @@ public class ComboCommands {
 
     public static ResourceLocation initStandByCommand(LivingEntity a,
                                                       Map<EnumSet<InputCommand>, ResourceLocation> map) {
-        EnumSet<InputCommand> commands = a.getCapability(CapabilityInputState.INPUT_STATE)
-                .map((state) -> state.getCommands(a)).orElseGet(() -> EnumSet.noneOf(InputCommand.class));
+        var inputState = a.getData(CapabilityInputState.INPUT_STATE.get());
+        EnumSet<InputCommand> commands = inputState != null ? inputState.getCommands(a) : EnumSet.noneOf(InputCommand.class);
 
         return map.entrySet().stream().filter((entry) -> commands.containsAll(entry.getKey()))
                 // .findFirst()
                 .min(Comparator.comparingInt(
-                        (entry) -> Objects.requireNonNull(ComboStateRegistry.REGISTRY.get().getValue(entry.getValue())).getPriority()))
+                        (entry) -> Objects.requireNonNull(ComboStateRegistry.REGISTRY.get(entry.getValue())).getPriority()))
                 .map(Map.Entry::getValue).orElseGet(ComboStateRegistry.NONE::getId);
     }
 

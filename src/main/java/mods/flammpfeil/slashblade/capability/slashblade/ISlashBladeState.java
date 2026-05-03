@@ -19,23 +19,28 @@ import mods.flammpfeil.slashblade.util.TimeValueHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
+import net.minecraft.core.Holder;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.common.util.INBTSerializable;
+import net.neoforged.neoforge.common.NeoForge;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.awt.*;
 import java.util.*;
 
-public interface ISlashBladeState extends INBTSerializable<CompoundTag> {
+public interface ISlashBladeState {
 
-    @Override
+    private static Holder<Enchantment> soulSpeedHolder(LivingEntity user) {
+        return user.level().registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(Enchantments.SOUL_SPEED);
+    }
+
     default CompoundTag serializeNBT() {
         CompoundTag tag = new CompoundTag();
         // action state
@@ -86,7 +91,6 @@ public interface ISlashBladeState extends INBTSerializable<CompoundTag> {
         return tag;
     }
 
-    @Override
     default void deserializeNBT(CompoundTag tag) {
         if (tag == null) {
             return;
@@ -127,13 +131,13 @@ public interface ISlashBladeState extends INBTSerializable<CompoundTag> {
         this.setAdjust(NBTHelper.getVector3d(tag, "adjustXYZ"));
 
         if (tag.contains("TextureName")) {
-            this.setTexture(new ResourceLocation(tag.getString("TextureName")));
+            this.setTexture(ResourceLocation.tryParse(tag.getString("TextureName")));
         } else {
             this.setTexture(null);
         }
 
         if (tag.contains("ModelName")) {
-            this.setModel(new ResourceLocation(tag.getString("ModelName")));
+            this.setModel(ResourceLocation.tryParse(tag.getString("ModelName")));
         } else {
             this.setModel(null);
         }
@@ -204,11 +208,11 @@ public interface ISlashBladeState extends INBTSerializable<CompoundTag> {
         ResourceLocation key = getSlashArtsKey();
         SlashArts result = null;
         if (key != null) {
-            result = SlashArtsRegistry.REGISTRY.get().containsKey(key) ? SlashArtsRegistry.REGISTRY.get().getValue(key)
+            result = SlashArtsRegistry.REGISTRY.containsKey(key) ? SlashArtsRegistry.REGISTRY.get(key)
                     : SlashArtsRegistry.JUDGEMENT_CUT.get();
         }
 
-        if (key == SlashArtsRegistry.NONE.getId()) {
+        if (SlashArtsRegistry.NONE.getId().equals(key)) {
             result = null;
         }
 
@@ -304,20 +308,23 @@ public interface ISlashBladeState extends INBTSerializable<CompoundTag> {
 
     default ResourceLocation progressCombo(LivingEntity user, boolean isVirtual) {
         ResourceLocation currentloc = resolvCurrentComboState(user);
-        ComboState current = ComboStateRegistry.REGISTRY.get().getValue(currentloc);
+        ComboState current = ComboStateRegistry.REGISTRY.get(currentloc);
 
         if (current == null) {
             return ComboStateRegistry.NONE.getId();
         }
-
-        ResourceLocation next = current.getNext(user);
+        
+        var event = new SlashBladeEvent.NextComboEvent(user.getMainHandItem(), this, user, current.getNext(user));
+        NeoForge.EVENT_BUS.post(event);
+        ResourceLocation next = event.getNextCombo();
         if (!next.equals(ComboStateRegistry.NONE.getId()) && next.equals(currentloc)) {
             return ComboStateRegistry.NONE.getId();
         }
 
-        ResourceLocation rootNext = Objects.requireNonNull(ComboStateRegistry.REGISTRY.get().getValue(getComboRoot())).getNext(user);
-        ComboState nextCS = ComboStateRegistry.REGISTRY.get().getValue(next);
-        ComboState rootNextCS = ComboStateRegistry.REGISTRY.get().getValue(rootNext);
+        ComboState comboRoot = Objects.requireNonNull(ComboStateRegistry.REGISTRY.get(getComboRoot()));
+        ResourceLocation rootNext = comboRoot.getNext(user);
+        ComboState nextCS = ComboStateRegistry.REGISTRY.get(next);
+        ComboState rootNextCS = ComboStateRegistry.REGISTRY.get(rootNext);
         ResourceLocation resolved = null;
         if (rootNextCS != null) {
             if (nextCS != null) {
@@ -347,13 +354,14 @@ public interface ISlashBladeState extends INBTSerializable<CompoundTag> {
 
         Map.Entry<Integer, ResourceLocation> currentloc = resolvCurrentComboStateTicks(user);
 
-        ComboState current = ComboStateRegistry.REGISTRY.get().getValue(currentloc.getValue());
+        ComboState current = ComboStateRegistry.REGISTRY.get(currentloc.getValue());
         if (current == null) {
             return ComboStateRegistry.NONE.getId();
         }
 
         // Uninterrupted
-        if (currentloc.getValue() != ComboStateRegistry.NONE.getId() && current.getNext(user) == currentloc.getValue()) {
+        if (!ComboStateRegistry.NONE.getId().equals(currentloc.getValue())
+                && Objects.equals(current.getNext(user), currentloc.getValue())) {
             return ComboStateRegistry.NONE.getId();
         }
 
@@ -382,21 +390,21 @@ public interface ISlashBladeState extends INBTSerializable<CompoundTag> {
             csloc = this.getSlashArts().doArts(type, user);
         }
 
-        SlashBladeEvent.ChargeActionEvent event = new SlashBladeEvent.ChargeActionEvent(user, elapsed, this, csloc,
+        SlashBladeEvent.PerformSlashArtEvent event = new SlashBladeEvent.PerformSlashArtEvent(user, elapsed, this, csloc,
                 type);
-        MinecraftForge.EVENT_BUS.post(event);
+        NeoForge.EVENT_BUS.post(event);
         if (event.isCanceled()) {
             return ComboStateRegistry.NONE.getId();
         }
 
         csloc = event.getComboState();
-        ComboState cs = ComboStateRegistry.REGISTRY.get().getValue(csloc);
+        ComboState cs = ComboStateRegistry.REGISTRY.get(csloc);
 
-        if (csloc != ComboStateRegistry.NONE.getId() && !currentloc.getValue().equals(csloc)) {
+        if (!ComboStateRegistry.NONE.getId().equals(csloc) && !currentloc.getValue().equals(csloc)) {
 
             if (cs != null && current.getPriority() > cs.getPriority()) {
                 if (type == SlashArts.ArtsType.Jackpot) {
-                    AdvancementHelper.grantedIf(Enchantments.SOUL_SPEED, user);
+                    AdvancementHelper.grantedIf(soulSpeedHolder(user).value(), user);
                 }
                 this.updateComboSeq(user, csloc);
             }
@@ -405,17 +413,17 @@ public interface ISlashBladeState extends INBTSerializable<CompoundTag> {
     }
 
     default void updateComboSeq(LivingEntity entity, ResourceLocation loc) {
-        BladeMotionEvent event = new BladeMotionEvent(entity, loc);
-        MinecraftForge.EVENT_BUS.post(event);
-        if (event.isCanceled()) {
+        if (!applyComboSeq(entity, loc, entity.level().getGameTime())) {
             return;
         }
-        this.setComboSeq(event.getCombo());
-        this.setLastActionTime(entity.level().getGameTime());
-        ComboState cs = ComboStateRegistry.REGISTRY.get().getValue(event.getCombo());
+        ComboState cs = ComboStateRegistry.REGISTRY.get(this.getComboSeq());
         if (cs != null) {
-            cs.clickAction(event.getEntity());
+            cs.clickAction(entity);
         }
+    }
+
+    default void synchronizeComboSeq(LivingEntity entity, ResourceLocation loc) {
+        applyComboSeq(entity, loc, this.getLastActionTime());
     }
 
     default ResourceLocation resolvCurrentComboState(LivingEntity user) {
@@ -425,11 +433,19 @@ public interface ISlashBladeState extends INBTSerializable<CompoundTag> {
         return resolvCurrentComboStateTicks(user).getValue();
     }
 
+    default Map.Entry<Integer, ResourceLocation> peekCurrentComboStateTicks(LivingEntity user) {
+        return resolveCurrentComboStateTicks(user, false);
+    }
+
     default Map.Entry<Integer, ResourceLocation> resolvCurrentComboStateTicks(LivingEntity user) {
-        ResourceLocation current = ComboStateRegistry.REGISTRY.get().containsKey(getComboSeq()) ? getComboSeq()
+        return resolveCurrentComboStateTicks(user, true);
+    }
+
+    private Map.Entry<Integer, ResourceLocation> resolveCurrentComboStateTicks(LivingEntity user, boolean updateState) {
+        ResourceLocation current = ComboStateRegistry.REGISTRY.containsKey(getComboSeq()) ? getComboSeq()
                 : ComboStateRegistry.NONE.getId();
-        ComboState currentCS = ComboStateRegistry.REGISTRY.get().getValue(current) != null
-                ? ComboStateRegistry.REGISTRY.get().getValue(current)
+        ComboState currentCS = ComboStateRegistry.REGISTRY.get(current) != null
+                ? ComboStateRegistry.REGISTRY.get(current)
                 : ComboStateRegistry.NONE.get();
         int time = (int) TimeValueHelper.getMSecFromTicks(getElapsedTime(user));
 
@@ -438,14 +454,35 @@ public interface ISlashBladeState extends INBTSerializable<CompoundTag> {
                 while (!current.equals(ComboStateRegistry.NONE.getId()) && currentCS.getTimeoutMS() < time) {
                     time -= currentCS.getTimeoutMS();
 
-                    current = currentCS.getNextOfTimeout(user);
-                    this.updateComboSeq(user, current);
+                    var event = new SlashBladeEvent.NextOfTimeOutComboEvent(user.getMainHandItem(), this, user, currentCS.getNextOfTimeout(user));
+                    NeoForge.EVENT_BUS.post(event);
+                    current = event.getNextCombo();
+
+                    if (updateState) {
+                        this.updateComboSeq(user, current);
+                    }
+                    currentCS = ComboStateRegistry.REGISTRY.get(current);
+                    if (currentCS == null) {
+                        current = ComboStateRegistry.NONE.getId();
+                        currentCS = ComboStateRegistry.NONE.get();
+                    }
                 }
             }
         }
 
         int ticks = (int) TimeValueHelper.getTicksFromMSec(time);
         return new AbstractMap.SimpleImmutableEntry<>(ticks, current);
+    }
+
+    private boolean applyComboSeq(LivingEntity entity, ResourceLocation loc, long actionTime) {
+        BladeMotionEvent event = new BladeMotionEvent(entity, loc, actionTime);
+        NeoForge.EVENT_BUS.post(event);
+        if (event.isCanceled()) {
+            return false;
+        }
+        this.setComboSeq(event.getCombo());
+        this.setLastActionTime(event.getActionTime());
+        return true;
     }
 
     ResourceLocation getComboRoot();

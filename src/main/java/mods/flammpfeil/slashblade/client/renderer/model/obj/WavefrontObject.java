@@ -4,8 +4,8 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import org.lwjgl.opengl.GL11;
 
 import java.io.BufferedReader;
@@ -177,7 +177,6 @@ public class WavefrontObject {
     }
 
     private Vertex parseVertex(String line, int lineCount) throws ModelFormatException {
-        Vertex vertex = null;
 
         if (isValidVertexLine(line)) {
             line = line.substring(line.indexOf(" ") + 1);
@@ -202,7 +201,6 @@ public class WavefrontObject {
     }
 
     private Vertex parseVertexNormal(String line, int lineCount) throws ModelFormatException {
-        Vertex vertexNormal = null;
 
         if (isValidVertexNormalLine(line)) {
             line = line.substring(line.indexOf(" ") + 1);
@@ -225,7 +223,6 @@ public class WavefrontObject {
     }
 
     private TextureCoordinate parseTextureCoordinate(String line, int lineCount) throws ModelFormatException {
-        TextureCoordinate textureCoordinate = null;
 
         if (isValidTextureCoordinateLine(line)) {
             line = line.substring(line.indexOf(" ") + 1);

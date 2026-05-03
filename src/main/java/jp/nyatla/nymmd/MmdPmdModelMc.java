@@ -58,7 +58,7 @@ public class MmdPmdModelMc extends MmdPmdModel_BasicClass {
     protected static class FileResourceProvider implements IResourceProvider {
         public ResourceLocation getTextureStream(String i_name) throws MmdException {
             try {
-                return new ResourceLocation(i_name);
+                return ResourceLocation.parse(i_name);
             } catch (Exception e) {
                 throw new MmdException(e);
             }

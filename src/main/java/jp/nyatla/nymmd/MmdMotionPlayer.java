@@ -203,7 +203,7 @@ public abstract class MmdMotionPlayer {
             ik_array[i].update();
         }
 
-        eventBus.post(new UpdateBoneEvent.Pre(this._ref_pmd_model.getBoneArray(), this));
+        eventBus.post(new UpdateBoneEvent.Post(this._ref_pmd_model.getBoneArray(), this));
         // ボーン行列の更新
         for (int i = 0; i < bone_array.length; i++) {
             bone_array[i].updateMatrix();

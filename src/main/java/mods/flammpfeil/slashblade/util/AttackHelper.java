@@ -1,9 +1,9 @@
 package mods.flammpfeil.slashblade.util;
 
-import mods.flammpfeil.slashblade.capability.concentrationrank.ConcentrationRankCapabilityProvider;
+import mods.flammpfeil.slashblade.capability.concentrationrank.CapabilityConcentrationRank;
 import mods.flammpfeil.slashblade.capability.concentrationrank.IConcentrationRank;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import mods.flammpfeil.slashblade.capability.slashblade.ISlashBladeState;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket;
 import net.minecraft.server.level.ServerLevel;
@@ -16,17 +16,18 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.MobType;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.common.ForgeHooks;
-import net.minecraftforge.entity.PartEntity;
-import net.minecraftforge.event.ForgeEventFactory;
-import net.minecraftforge.event.entity.player.CriticalHitEvent;
+import net.neoforged.neoforge.common.CommonHooks;
+import net.neoforged.neoforge.entity.PartEntity;
+import net.neoforged.neoforge.event.EventHooks;
+import net.neoforged.neoforge.event.entity.player.CriticalHitEvent;
 
 import static mods.flammpfeil.slashblade.SlashBladeConfig.REFINE_DAMAGE_MULTIPLIER;
 import static mods.flammpfeil.slashblade.SlashBladeConfig.SLASHBLADE_DAMAGE_MULTIPLIER;
@@ -35,7 +36,7 @@ import static mods.flammpfeil.slashblade.util.AttackManager.getSlashBladeDamageS
 public class AttackHelper {
     public static void attack(LivingEntity attacker, Entity target, float comboRatio) {
         // 触发Forge事件，以兼容其他模组
-        if (attacker instanceof Player player && !ForgeHooks.onPlayerAttackTarget(player, target)) {
+        if (attacker instanceof Player player && !CommonHooks.onPlayerAttackTarget(player, target)) {
             return;
         }
         // 判断攻击目标是否可以被攻击
@@ -88,10 +89,10 @@ public class AttackHelper {
         baseDamage *= comboRatio * getSlashBladeDamageScale(attacker) * SLASHBLADE_DAMAGE_MULTIPLIER.get();
 
         if (attacker instanceof Player player) {
-            CriticalHitEvent hitResult = ForgeHooks.getCriticalHit(player, target, isCritical, isCritical ? 1.5F : 1.0F);
-            isCritical = hitResult != null;
+            CriticalHitEvent hitResult = CommonHooks.fireCriticalHit(player, target, isCritical, isCritical ? 1.5F : 1.0F);
+            isCritical = hitResult.isCriticalHit();
             if (isCritical) {
-                baseDamage *= hitResult.getDamageModifier();
+                baseDamage *= hitResult.getDamageMultiplier();
             }
         }
         return baseDamage;
@@ -101,20 +102,21 @@ public class AttackHelper {
      * 横扫之刃附魔加成(三级加成3.25攻击力)
      */
     public static float getSweepingBonus(LivingEntity attacker) {
-        return 10 * (EnchantmentHelper.getSweepingDamageRatio(attacker) * 0.5f);
+        return 10 * ((float) attacker.getAttributeValue(Attributes.SWEEPING_DAMAGE_RATIO) * 0.5f);
     }
 
     /**
      * 评分等级加成
      */
     public static float getRankBonus(LivingEntity attacker) {
-        IConcentrationRank.ConcentrationRanks rankBonus = attacker
-                .getCapability(ConcentrationRankCapabilityProvider.RANK_POINT)
-                .map(rp -> rp.getRank(attacker.getCommandSenderWorld().getGameTime()))
-                .orElse(IConcentrationRank.ConcentrationRanks.NONE);
+        IConcentrationRank rankData = attacker.getData(CapabilityConcentrationRank.RANK_POINT.get());
+        IConcentrationRank.ConcentrationRanks rankBonus = rankData != null
+                ? rankData.getRank(attacker.getCommandSenderWorld().getGameTime())
+                : IConcentrationRank.ConcentrationRanks.NONE;
         double rankDamageBonus = rankBonus.level / 2.0;
         if (IConcentrationRank.ConcentrationRanks.S.level <= rankBonus.level) {
-            int refine = attacker.getMainHandItem().getCapability(ItemSlashBlade.BLADESTATE).map(ISlashBladeState::getRefine).orElse(0);
+            int refine = BladeStateAccess.of(attacker.getMainHandItem())
+                    .map(ISlashBladeState::getRefine).orElse(0);
             int level = 0;
             if (attacker instanceof Player player) {
                 level = player.experienceLevel;
@@ -128,11 +130,18 @@ public class AttackHelper {
      * 杀手类附魔加成(杀死类附魔攻击对应的生物加成2.5 * 附魔等级)
      */
     public static float getEnchantmentBonus(LivingEntity attacker, Entity target) {
-        if (target instanceof LivingEntity living) {
-            return EnchantmentHelper.getDamageBonus(attacker.getMainHandItem(), living.getMobType());
-        } else {
-            return EnchantmentHelper.getDamageBonus(attacker.getMainHandItem(), MobType.UNDEFINED);
+        float bonus = 0;
+        var enchLookup = attacker.registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
+        var sharpness = enchLookup.getOrThrow(Enchantments.SHARPNESS);
+        var smite = enchLookup.getOrThrow(Enchantments.SMITE);
+        var baneOfArthropods = enchLookup.getOrThrow(Enchantments.BANE_OF_ARTHROPODS);
+        ItemStack held = attacker.getMainHandItem();
+        bonus += EnchantmentHelper.getTagEnchantmentLevel(sharpness, held) * 1.25F;
+        if (target instanceof LivingEntity) {
+            bonus += EnchantmentHelper.getTagEnchantmentLevel(smite, held) * 2.5F;
+            bonus += EnchantmentHelper.getTagEnchantmentLevel(baneOfArthropods, held) * 2.5F;
         }
+        return bonus;
     }
 
     /**
@@ -140,7 +149,9 @@ public class AttackHelper {
      */
     public static float calculateKnockback(LivingEntity attacker) {
         float knockback = (float) attacker.getAttributeValue(Attributes.ATTACK_KNOCKBACK);
-        knockback += EnchantmentHelper.getKnockbackBonus(attacker);
+        var enchLookup2 = attacker.registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
+        var knockbackHolder = enchLookup2.getOrThrow(Enchantments.KNOCKBACK);
+        knockback += EnchantmentHelper.getTagEnchantmentLevel(knockbackHolder, attacker.getMainHandItem());
         if (attacker.isSprinting()) {
             attacker.level().playSound(null, attacker.getX(), attacker.getY(), attacker.getZ(), SoundEvents.PLAYER_ATTACK_KNOCKBACK, attacker.getSoundSource(), 1.0F, 1.0F);
             ++knockback;
@@ -176,12 +187,13 @@ public class AttackHelper {
     public static FireAspectResult handleFireAspect(LivingEntity attacker, Entity target) {
         float preAttackHealth = 0.0F;
         boolean shouldSetFire = false;
-        int fireAspectLevel = EnchantmentHelper.getFireAspect(attacker);
+        var enchLookup3 = attacker.registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
+        int fireAspectLevel = EnchantmentHelper.getTagEnchantmentLevel(enchLookup3.getOrThrow(Enchantments.FIRE_ASPECT), attacker.getMainHandItem());
         if (target instanceof LivingEntity living) {
             preAttackHealth = living.getHealth();
             if (fireAspectLevel > 0 && !target.isOnFire()) {
                 shouldSetFire = true;
-                target.setSecondsOnFire(1);
+                target.igniteForSeconds(1);
             }
         }
         return new FireAspectResult(preAttackHealth, shouldSetFire, fireAspectLevel);
@@ -217,9 +229,13 @@ public class AttackHelper {
      * 播放攻击音效与暴击效果
      */
     public static void playAttackEffects(LivingEntity attacker, Entity target, boolean isCritical) {
-        attacker.level().playSound(null, attacker.getX(), attacker.getY(), attacker.getZ(), SoundEvents.PLAYER_ATTACK_CRIT, attacker.getSoundSource(), 1.0F, 1.0F);
-        if (isCritical && attacker instanceof Player player) {
-            player.crit(target);
+        if (isCritical) {
+            attacker.level().playSound(null, attacker.getX(), attacker.getY(), attacker.getZ(), SoundEvents.PLAYER_ATTACK_CRIT, attacker.getSoundSource(), 1.0F, 1.0F);
+            if (attacker instanceof Player player) {
+                player.crit(target);
+            }
+        } else {
+            attacker.level().playSound(null, attacker.getX(), attacker.getY(), attacker.getZ(), SoundEvents.PLAYER_ATTACK_STRONG, attacker.getSoundSource(), 1.0F, 1.0F);
         }
     }
 
@@ -228,10 +244,6 @@ public class AttackHelper {
      */
     public static void handleEnchantmentsAndDurability(LivingEntity attacker, Entity target) {
         attacker.setLastHurtMob(target);
-        if (target instanceof LivingEntity living) {
-            EnchantmentHelper.doPostHurtEffects(living, attacker);
-        }
-        EnchantmentHelper.doPostDamageEffects(attacker, target);
 
         ItemStack itemStack = attacker.getMainHandItem();
         Entity entity = target;
@@ -247,7 +259,7 @@ public class AttackHelper {
             }
             if (itemStack.isEmpty()) {
                 if (attacker instanceof Player player) {
-                    ForgeEventFactory.onPlayerDestroyItem(player, copy, InteractionHand.MAIN_HAND);
+                    EventHooks.onPlayerDestroyItem(player, copy, InteractionHand.MAIN_HAND);
                 }
                 attacker.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
             }
@@ -266,7 +278,7 @@ public class AttackHelper {
             }
             //应用完整的火焰附加效果(每级4秒)
             if (fireAspectResult.fireAspectLevel > 0) {
-                target.setSecondsOnFire(fireAspectResult.fireAspectLevel * 4);
+                target.igniteForSeconds(fireAspectResult.fireAspectLevel * 4);
             }
             // 伤害粒子
             if (attacker.level() instanceof ServerLevel && damageDealt > 2.0F) {

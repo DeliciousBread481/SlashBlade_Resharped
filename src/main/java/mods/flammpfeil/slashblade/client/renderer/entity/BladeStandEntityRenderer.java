@@ -29,12 +29,12 @@ public class BladeStandEntityRenderer extends ItemFrameRenderer<BladeStandEntity
     }
 
     @Override
-    public void render(@NotNull BladeStandEntity entity, float entityYaw, float partialTicks, @NotNull PoseStack matrixStackIn,
+    public void render(@NotNull BladeStandEntity entity, float entityYRot, float partialTick, @NotNull PoseStack matrixStackIn,
                        @NotNull MultiBufferSource bufferIn, int packedLightIn) {
-        doRender(entity, entityYaw, partialTicks, matrixStackIn, bufferIn, packedLightIn);
+        doRender(entity, entityYRot, partialTick, matrixStackIn, bufferIn, packedLightIn);
     }
 
-    public void doRender(BladeStandEntity entity, float entityYaw, float partialTicks, PoseStack matrixStackIn,
+    public void doRender(BladeStandEntity entity, float entityYRot, float partialTick, PoseStack matrixStackIn,
                          MultiBufferSource bufferIn, int packedLightIn) {
 
         if (entity.currentTypeStack.isEmpty()) {
@@ -93,17 +93,13 @@ public class BladeStandEntityRenderer extends ItemFrameRenderer<BladeStandEntity
             }
         }
 
-        net.minecraftforge.client.event.RenderNameTagEvent renderNameplateEvent = new net.minecraftforge.client.event.RenderNameTagEvent(
-                entity, entity.getDisplayName(), this, matrixStackIn, bufferIn, packedLightIn, partialTicks);
-        // net.minecraftforge.client.event.RenderNameplateEvent renderNameplateEvent =
-        // new net.minecraftforge.client.event.RenderNameplateEvent(entity,
-        // entity.getDisplayName().getFormatedText(), this, matrixStackIn, bufferIn,
-        // packedLightIn);
-        net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(renderNameplateEvent);
-        if (renderNameplateEvent.getResult() != net.minecraftforge.eventbus.api.Event.Result.DENY
-                && (renderNameplateEvent.getResult() == net.minecraftforge.eventbus.api.Event.Result.ALLOW
+        net.neoforged.neoforge.client.event.RenderNameTagEvent renderNameplateEvent = new net.neoforged.neoforge.client.event.RenderNameTagEvent(
+                entity, entity.getDisplayName(), this, matrixStackIn, bufferIn, packedLightIn, partialTick);
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(renderNameplateEvent);
+        if (renderNameplateEvent.canRender() != net.neoforged.neoforge.common.util.TriState.FALSE
+                && (renderNameplateEvent.canRender() == net.neoforged.neoforge.common.util.TriState.TRUE
                 || this.shouldShowName(entity))) {
-            this.renderNameTag(entity, renderNameplateEvent.getContent(), matrixStackIn, bufferIn, packedLightIn);
+            this.renderNameTag(entity, renderNameplateEvent.getContent(), matrixStackIn, bufferIn, packedLightIn, partialTick);
         }
     }
 

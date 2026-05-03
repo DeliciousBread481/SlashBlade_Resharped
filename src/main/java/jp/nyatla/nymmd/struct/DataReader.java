@@ -39,6 +39,7 @@ package jp.nyatla.nymmd.struct;
 
 import jp.nyatla.nymmd.MmdException;
 
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -48,14 +49,14 @@ public class DataReader {
 
     public DataReader(InputStream i_stream) throws MmdException {
         try {
-            // コレなんとかしよう。C#のBinaryReaderみたいに振舞うように。
-            int file_len = i_stream.available();
-            if (file_len < 1) {
-                file_len = 2 * 1024 * 1024;
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            byte[] buf = new byte[8192];
+            int read;
+            while ((read = i_stream.read(buf)) != -1) {
+                baos.write(buf, 0, read);
             }
-            byte[] buf = new byte[file_len];
-            int buf_len = i_stream.read(buf, 0, file_len);
-            this._buf = ByteBuffer.wrap(buf, 0, buf_len);
+            byte[] data = baos.toByteArray();
+            this._buf = ByteBuffer.wrap(data);
             this._buf.order(ByteOrder.LITTLE_ENDIAN);
             return;
         } catch (Exception e) {

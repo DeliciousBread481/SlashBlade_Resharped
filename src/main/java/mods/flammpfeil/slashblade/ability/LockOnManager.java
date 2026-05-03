@@ -1,6 +1,7 @@
 package mods.flammpfeil.slashblade.ability;
 
 import mods.flammpfeil.slashblade.capability.inputstate.CapabilityInputState;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import mods.flammpfeil.slashblade.event.handler.InputCommandEvent;
 import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.util.InputCommand;
@@ -16,12 +17,12 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.entity.PartEntity;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.entity.PartEntity;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.bus.api.SubscribeEvent;
 
 import java.util.Comparator;
 import java.util.List;
@@ -40,7 +41,7 @@ public class LockOnManager {
     }
 
     public void register() {
-        MinecraftForge.EVENT_BUS.register(this);
+        NeoForge.EVENT_BUS.register(this);
     }
 
     @SubscribeEvent
@@ -101,17 +102,13 @@ public class LockOnManager {
 
         }
 
-        stack.getCapability(ItemSlashBlade.BLADESTATE).ifPresent(s -> s.setTargetEntityId(targetEntity));
+        BladeStateAccess.of(stack).ifPresent(s -> s.setTargetEntityId(targetEntity));
 
     }
 
     @OnlyIn(Dist.CLIENT)
     @SubscribeEvent
-    public void onEntityUpdate(TickEvent.RenderTickEvent event) {
-        if (event.phase != TickEvent.Phase.START) {
-            return;
-        }
-
+    public void onEntityUpdate(ClientTickEvent.Pre event) {
         final Minecraft mcinstance = Minecraft.getInstance();
         if (mcinstance.player == null) {
             return;
@@ -124,7 +121,7 @@ public class LockOnManager {
             return;
         }
 
-        stack.getCapability(ItemSlashBlade.BLADESTATE).ifPresent(s -> {
+        BladeStateAccess.of(stack).ifPresent(s -> {
 
             Entity target = s.getTargetEntity(player.level());
 
@@ -138,12 +135,12 @@ public class LockOnManager {
             if (!player.level().isClientSide()) {
                 return;
             }
-            if (player.getCapability(CapabilityInputState.INPUT_STATE)
-                    .filter(input -> input.getCommands().contains(InputCommand.SNEAK)).isEmpty()) {
+            var input = player.getData(CapabilityInputState.INPUT_STATE.get());
+            if (input == null || !input.getCommands().contains(InputCommand.SNEAK)) {
                 return;
             }
 
-            float partialTicks = mcinstance.getFrameTime();
+            float partialTicks = mcinstance.getTimer().getGameTimeDeltaTicks();
 
             float oldYawHead = player.yHeadRot;
             float oldYawOffset = player.yBodyRot;
