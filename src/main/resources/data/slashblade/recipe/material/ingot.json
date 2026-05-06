@@ -1,5 +1,6 @@
 {
     "type": "slashblade:proudsoul",
+	"category": "misc",
     "ingredients": [
         {
             "item": "slashblade:proudsoul"
@@ -12,6 +13,7 @@
         }
     ],
     "result": {
-        "item": "slashblade:proudsoul_ingot"
+        "id": "slashblade:proudsoul_ingot",
+        "count": 1
     }
 }

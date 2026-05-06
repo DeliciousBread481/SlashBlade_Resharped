@@ -1,6 +1,7 @@
 {
     "parent": "item/generated",
     "textures": {
-        "layer0": "slashblade:item/soul"
+        "layer0": "slashblade:item/soul",
+        "particle": "slashblade:item/soul"
     }
 }

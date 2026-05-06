@@ -125,7 +125,7 @@ public class RefineHandler {
 
             result.setDamageValue(result.getDamageValue() - Math.max(result.getDamageValue(), materialCost * Math.max(1, level / 2)));
 
-
+            ItemSlashBlade.updateRarity(result);
         }
 
         event.setMaterialCost(materialCost);

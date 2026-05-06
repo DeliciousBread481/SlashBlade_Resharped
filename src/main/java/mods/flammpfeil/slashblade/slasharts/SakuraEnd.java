@@ -41,7 +41,7 @@ public class SakuraEnd {
             return null;
         }
         SlashBladeEvent.DoSlashEvent event = new SlashBladeEvent.DoSlashEvent(blade,
-                BladeStateAccess.of(blade).orElseThrow(NullPointerException::new),
+                BladeStateAccess.of(blade).orElseThrow(),
                 playerIn, roll, critical, damage, knockback);
 
         if (NeoForge.EVENT_BUS.post(event).isCanceled()) {

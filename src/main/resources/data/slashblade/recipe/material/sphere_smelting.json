@@ -1,9 +1,13 @@
 {
   "type": "minecraft:smelting",
+  "category": "misc",
   "ingredient": {
     "item": "slashblade:proudsoul_ingot"
   },
-  "result": "slashblade:proudsoul_sphere",
+  "result": {
+      "count": 1,
+      "id": "slashblade:proudsoul_sphere"
+   },
   "experience": 0.1,
   "cookingtime": 200
 }

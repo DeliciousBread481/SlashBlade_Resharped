@@ -1,7 +1,8 @@
 {
     "parent": "slashblade:item/trapezohedron",
     "textures": {
-        "layer0": "slashblade:item/soul"
+        "layer0": "slashblade:item/soul",
+        "particle": "slashblade:item/soul"
     },
     "gui_light": "front",
     "display": {

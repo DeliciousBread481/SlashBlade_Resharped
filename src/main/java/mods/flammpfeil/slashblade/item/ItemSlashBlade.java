@@ -24,6 +24,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
@@ -116,6 +117,17 @@ public class ItemSlashBlade extends SwordItem {
     @Override
     public String getCreatorModId(ItemStack itemStack) {
         return this.getBladeId(itemStack).getNamespace();
+    }
+
+    public static void updateRarity(@NotNull ItemStack stack) {
+        var swordType = SwordType.from(stack);
+        if (swordType.contains(SwordType.BEWITCHED)) {
+            stack.set(DataComponents.RARITY, Rarity.EPIC);
+        } else if (swordType.contains(SwordType.ENCHANTED)) {
+            stack.set(DataComponents.RARITY, Rarity.RARE);
+        } else {
+            stack.remove(DataComponents.RARITY);
+        }
     }
 
     @Override
@@ -222,7 +234,7 @@ public class ItemSlashBlade extends SwordItem {
         if (maxDamage < 0) {
             return;
         }
-        var state = BladeStateAccess.of(stack).orElseThrow(NullPointerException::new);
+        var state = BladeStateAccess.of(stack).orElseThrow();
         if (state.isBroken()) {
             if (damage <= 0 && !state.isSealed()) {
                 state.setBroken(false);
@@ -243,7 +255,7 @@ public class ItemSlashBlade extends SwordItem {
             return 0;
         }
 
-        var cap = BladeStateAccess.of(stack).orElseThrow(NullPointerException::new);
+        var cap = BladeStateAccess.of(stack).orElseThrow();
         boolean current = cap.isBroken();
 
         if (stack.getDamageValue() + amount >= stack.getMaxDamage()) {
@@ -273,10 +285,11 @@ public class ItemSlashBlade extends SwordItem {
     public static Consumer<LivingEntity> getOnBroken(ItemStack stack) {
         return (user) -> {
 
-            var state = BladeStateAccess.of(stack).orElseThrow(NullPointerException::new);
+            var state = BladeStateAccess.of(stack).orElseThrow();
             if (stack.isEnchanted()) {
                 int count = state.getProudSoulCount() >= SlashBladeConfig.MAX_ENCHANTED_PROUDSOUL_DROP.get() * 100 ?
                         SlashBladeConfig.MAX_ENCHANTED_PROUDSOUL_DROP.get() : Math.max(1, state.getProudSoulCount() / 100);
+                
                 List<Holder.Reference<Enchantment>> enchantments = user.registryAccess().lookupOrThrow(Registries.ENCHANTMENT)
                         .listElements()
                         .filter(stack::supportsEnchantment)
@@ -286,7 +299,8 @@ public class ItemSlashBlade extends SwordItem {
                 if (enchantments.isEmpty()) {
                     return;
                 }
-                for (int i = 0; i < count; i += 1) {
+                
+                for (int i = 0; i < count; i++) {
                     ItemStack enchanted_soul = new ItemStack(SlashBladeItems.PROUDSOUL_TINY.get());
                     Holder<Enchantment> enchant = enchantments.get(user.getRandom().nextInt(0, enchantments.size()));
                     if (enchant != null) {
@@ -299,12 +313,14 @@ public class ItemSlashBlade extends SwordItem {
                     state.setProudSoulCount(state.getProudSoulCount() - 100);
                 }
             }
+            
             ItemStack soul = new ItemStack(SlashBladeItems.PROUDSOUL_TINY.get());
 
             int count = state.getProudSoulCount() >= SlashBladeConfig.MAX_PROUDSOUL_DROP.get() * 100 ?
                     SlashBladeConfig.MAX_PROUDSOUL_DROP.get() : Math.max(1, state.getProudSoulCount() / 100);
 
             soul.setCount(count);
+            
             state.setProudSoulCount(state.getProudSoulCount() - (count * 100));
 
             ItemEntity itementity = new ItemEntity(user.level(), user.getX(), user.getY(), user.getZ(), soul);
@@ -367,9 +383,10 @@ public class ItemSlashBlade extends SwordItem {
                 cs.hitEffect(target, attacker);
             }
             if (attacker.level() instanceof ServerLevel serverLevel) {
+            	var blade = stack.copy();
                 stack.hurtAndBreak(1, serverLevel, attacker, item -> {
                     attacker.onEquippedItemBroken(item, EquipmentSlot.MAINHAND);
-                    ItemSlashBlade.getOnBroken(stack).accept(attacker);
+                    ItemSlashBlade.getOnBroken(blade).accept(attacker);
                 });
             }
 
@@ -385,9 +402,10 @@ public class ItemSlashBlade extends SwordItem {
         if (state.getDestroySpeed(worldIn, pos) != 0.0F) {
             BladeStateAccess.of(stack).ifPresent((s) -> {
                 if (worldIn instanceof ServerLevel serverLevel) {
+                	var blade = stack.copy();
                     stack.hurtAndBreak(1, serverLevel, entityLiving, item -> {
                         entityLiving.onEquippedItemBroken(item, EquipmentSlot.MAINHAND);
-                        ItemSlashBlade.getOnBroken(stack).accept(entityLiving);
+                        ItemSlashBlade.getOnBroken(blade).accept(entityLiving);
                     });
                 }
             });
@@ -403,7 +421,7 @@ public class ItemSlashBlade extends SwordItem {
         if (!worldIn.isClientSide()) {
 
             BladeStateAccess.of(stack).ifPresent((state) -> {
-
+            	
                 var swordType = SwordType.from(stack);
                 if (state.isBroken() || state.isSealed() || !(swordType.contains(SwordType.ENCHANTED))) {
                     return;
@@ -422,9 +440,10 @@ public class ItemSlashBlade extends SwordItem {
                             state.setProudSoulCount(state.getProudSoulCount() - cost);
                         } else {
                             if (worldIn instanceof ServerLevel serverLevel) {
+                            	var blade = stack.copy();
                                 stack.hurtAndBreak(1, serverLevel, entityLiving, item -> {
                                     entityLiving.onEquippedItemBroken(item, EquipmentSlot.MAINHAND);
-                                    ItemSlashBlade.getOnBroken(stack).accept(entityLiving);
+                                    ItemSlashBlade.getOnBroken(blade).accept(entityLiving);
                                 });
                             }
                         }
@@ -475,8 +494,9 @@ public class ItemSlashBlade extends SwordItem {
                 return;
             }
 
+            var swordType = SwordType.from(stack);
+
             if (!isSelected) {
-                var swordType = SwordType.from(stack);
                 if (entityIn instanceof Player player) {
                     if (!SlashBladeConfig.SELF_REPAIR_ENABLE.get()) {
                         return;
@@ -530,6 +550,12 @@ public class ItemSlashBlade extends SwordItem {
     @Override
     public boolean isBarVisible(@NotNull ItemStack stack) {
         return false;
+    }
+    
+    @Override
+    public Component getName(ItemStack p_41458_) {
+    	// TODO Auto-generated method stub
+    	return super.getName(p_41458_);
     }
 
     @Override

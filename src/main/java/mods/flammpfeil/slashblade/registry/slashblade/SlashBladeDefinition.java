@@ -8,6 +8,7 @@ import mods.flammpfeil.slashblade.SlashBladeCreativeGroup;
 import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 
 import mods.flammpfeil.slashblade.event.SlashBladeRegistryEvent;
+import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.registry.SlashBladeItems;
 import net.minecraft.Util;
 import net.minecraft.core.HolderLookup;
@@ -15,7 +16,6 @@ import net.minecraft.core.Holder.Reference;
 import net.minecraft.core.Registry;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
@@ -150,9 +150,7 @@ public class SlashBladeDefinition {
 
         if (registries != null) {
             for (var instance : this.enchantments) {
-                registries.lookup(Registries.ENCHANTMENT)
-                        .flatMap(reg -> reg.get(ResourceKey.create(Registries.ENCHANTMENT, instance.getEnchantmentID())))
-                        .ifPresent(holder -> result.enchant(holder, instance.getEnchantmentLevel()));
+            	result.enchant(instance.getEnchantment(), instance.getEnchantmentLevel());
             }
         }
         if (this.stateDefinition.isUnbreakable()) {
@@ -160,7 +158,9 @@ public class SlashBladeDefinition {
         }
         var postRegistry = new SlashBladeRegistryEvent.Post(this, result);
         NeoForge.EVENT_BUS.post(postRegistry);
-        return postRegistry.getBlade();
+        ItemStack out = postRegistry.getBlade();
+        ItemSlashBlade.updateRarity(out);
+        return out;
     }
 
     public Item getItem() {

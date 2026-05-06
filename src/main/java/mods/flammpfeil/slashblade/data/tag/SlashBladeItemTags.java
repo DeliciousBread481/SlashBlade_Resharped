@@ -14,4 +14,7 @@ public class SlashBladeItemTags {
     public static final TagKey<Item> CAN_COPY_SE = ItemTags.create(SlashBlade.prefix("can_copy_se"));
     public static final TagKey<Item> CAN_CHANGE_SA = ItemTags.create(SlashBlade.prefix("can_change_sa"));
     public static final TagKey<Item> CAN_CHANGE_SE = ItemTags.create(SlashBlade.prefix("can_change_se"));
+
+    public static final TagKey<Item> SLASHBLADE_SWORDS = ItemTags.create(SlashBlade.prefix("swords"));
+    public static final TagKey<Item> ENCHANTABLE_SWORD = ItemTags.create(ResourceLocation.withDefaultNamespace("enchantable/sword"));
 }

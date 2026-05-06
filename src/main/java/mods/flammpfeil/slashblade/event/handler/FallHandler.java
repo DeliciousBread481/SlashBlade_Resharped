@@ -1,5 +1,6 @@
 package mods.flammpfeil.slashblade.event.handler;
 
+import mods.flammpfeil.slashblade.SlashBlade;
 import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import mods.flammpfeil.slashblade.registry.ComboStateRegistry;
 import mods.flammpfeil.slashblade.registry.combo.ComboState;
@@ -18,11 +19,12 @@ import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.living.LivingFallEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerFlyableFallEvent;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 
+@EventBusSubscriber(modid = SlashBlade.MODID)
 public class FallHandler {
     private static final class SingletonHolder {
         private static final FallHandler instance = new FallHandler();
@@ -35,17 +37,13 @@ public class FallHandler {
     private FallHandler() {
     }
 
-    public void register() {
-        NeoForge.EVENT_BUS.register(this);
-    }
-
     @SubscribeEvent
-    public void onFall(LivingFallEvent event) {
+    public static void onFall(LivingFallEvent event) {
         resetState(event.getEntity());
     }
 
     @SubscribeEvent
-    public void onFlyableFall(PlayerFlyableFallEvent event) {
+    public static void onFlyableFall(PlayerFlyableFallEvent event) {
         resetState(event.getEntity());
     }
 

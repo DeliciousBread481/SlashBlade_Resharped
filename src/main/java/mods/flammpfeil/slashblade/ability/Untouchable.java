@@ -44,7 +44,7 @@ public class Untouchable {
 
     private boolean checkUntouchable(LivingEntity entity) {
         var effect = entity.getData(CapabilityMobEffect.MOB_EFFECT.get());
-        return effect != null && effect.isUntouchable(entity.getCommandSenderWorld().getGameTime());
+        return effect != null && effect.isUntouchable(entity.level().getGameTime());
     }
 
     private void doWitchTime(Entity entity) {

@@ -817,6 +817,7 @@ public class ComboStateRegistry {
             ComboState.Builder.newInstance().startAndEnd(2000, 2001).priority(70)
                     .next(entity -> SlashBlade.prefix("rapid_slash_quick"))
                     .nextOfTimeout(entity -> SlashBlade.prefix("rapid_slash"))
+                    .addTickAction(UserPoseOverrider::resetRot)
                     .addTickAction(ComboState.TimeLineTickAction.getBuilder()
                             .put(0, AttackManager::playQuickSheathSoundAction).build())
                     .releaseAction(ComboState::releaseActionQuickCharge)::build);

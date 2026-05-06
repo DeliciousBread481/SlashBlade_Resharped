@@ -2,23 +2,25 @@ package mods.flammpfeil.slashblade.registry.slashblade;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.resources.ResourceLocation;
+
+import net.minecraft.core.Holder;
+import net.minecraft.world.item.enchantment.Enchantment;
 
 public class EnchantmentDefinition {
     public static final Codec<EnchantmentDefinition> CODEC = RecordCodecBuilder.create(instance -> instance
-            .group(ResourceLocation.CODEC.fieldOf("id").forGetter(EnchantmentDefinition::getEnchantmentID),
+            .group(Enchantment.CODEC.fieldOf("id").forGetter(EnchantmentDefinition::getEnchantment),
                     Codec.INT.optionalFieldOf("lvl", 1).forGetter(EnchantmentDefinition::getEnchantmentLevel))
             .apply(instance, EnchantmentDefinition::new));
 
-    private final ResourceLocation id;
+    private final Holder<Enchantment> id;
     private final int lvl;
 
-    public EnchantmentDefinition(ResourceLocation enchantment, int level) {
+    public EnchantmentDefinition(Holder<Enchantment> enchantment, int level) {
         this.id = enchantment;
         this.lvl = level;
     }
 
-    public ResourceLocation getEnchantmentID() {
+    public Holder<Enchantment> getEnchantment() {
         return id;
     }
 

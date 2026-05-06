@@ -300,7 +300,7 @@ public class EntityDrive extends EntityAbstractSummonedSword {
             //评分等级加成
             if (living instanceof Player player) {
                 IConcentrationRank.ConcentrationRanks rankBonus = player.hasData(CapabilityConcentrationRank.RANK_POINT.get())
-                        ? player.getData(CapabilityConcentrationRank.RANK_POINT.get()).getRank(player.getCommandSenderWorld().getGameTime())
+                        ? player.getData(CapabilityConcentrationRank.RANK_POINT.get()).getRank(player.level().getGameTime())
                         : IConcentrationRank.ConcentrationRanks.NONE;
                 float rankDamageBonus = rankBonus.level / 2.0f;
                 if (IConcentrationRank.ConcentrationRanks.S.level <= rankBonus.level) {

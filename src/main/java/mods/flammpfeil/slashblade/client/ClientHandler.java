@@ -1,7 +1,6 @@
 package mods.flammpfeil.slashblade.client;
 
 import mods.flammpfeil.slashblade.SlashBlade;
-import mods.flammpfeil.slashblade.client.renderer.LockonCircleRender;
 import mods.flammpfeil.slashblade.client.renderer.SlashBladeTEISR;
 import mods.flammpfeil.slashblade.client.renderer.gui.RankRenderer;
 import mods.flammpfeil.slashblade.client.renderer.layers.LayerMainBlade;
@@ -54,7 +53,7 @@ public class ClientHandler {
         } else {
             UserPoseOverrider.getInstance().register();
         }
-        LockonCircleRender.getInstance().register();
+
         RankRenderer.getInstance().register();
         BlockPickCanceller.getInstance().register();
 

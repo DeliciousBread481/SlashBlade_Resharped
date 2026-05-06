@@ -101,16 +101,10 @@ public class TargetSelector {
 
         AABB aabb = getResolvedAxisAligned(attacker.getBoundingBox(), attacker.getLookAngle(), reach);
         Level world = attacker.level();
-        return Stream.of(world.getEntitiesOfClass(Projectile.class, aabb).stream()
-                        .filter(e -> ((e.getOwner()/* getThrower() */ == null || e.getOwner()/* getThrower() */ != attacker)
-                                && (!(e instanceof IShootable) || ((IShootable) e).getShooter() != attacker))))
-                /*
-                 * world.getEntitiesWithinAABB(DamagingProjectileEntity.class, aabb).stream()
-                 * .filter(e-> (e.shootingEntity == null || e.shootingEntity != attacker)),
-                 * world.getEntitiesWithinAABB(AbstractArrowEntity.class, aabb).stream()
-                 * .filter(e->e.getShooter() == null || e.getShooter() != attacker))
-                 */
-                .flatMap(s -> s).filter(e -> (e.distanceToSqr(attacker) < (reach * reach)))
+        return world.getEntitiesOfClass(Projectile.class, aabb).stream()
+                        .filter(e -> ((e.getOwner() == null || e.getOwner() != attacker)
+                                && (!(e instanceof IShootable) || ((IShootable) e).getShooter() != attacker)))
+                .filter(e -> (e.distanceToSqr(attacker) < (reach * reach)))
                 .collect(Collectors.toList());
     }
 
@@ -153,7 +147,7 @@ public class TargetSelector {
                         }
                     }
                     return result;
-                }).toList());
+                }).collect(Collectors.toList()));
 
         TargetingConditions predicate = getAreaAttackPredicate(reach);
 
@@ -168,7 +162,7 @@ public class TargetSelector {
                         }
                     }
                     return result;
-                }).toList());
+                }).collect(Collectors.toList()));
 
         return list1;
     }
@@ -204,18 +198,10 @@ public class TargetSelector {
                                                                                                 double reach, E owner) {
         AABB aabb = owner.getBoundingBox().inflate(reach);
 
-        return Stream
-                .of(world.getEntitiesOfClass(Projectile.class, aabb).stream()
-                        .filter(e -> (e.getOwner()/* getThrower() */ == null
-                                || e.getOwner()/* getThrower() */ != owner.getShooter())))
-                /*
-                 * world.getEntitiesWithinAABB(DamagingProjectileEntity.class, aabb).stream()
-                 * .filter(e-> (e.shootingEntity == null || e.shootingEntity !=
-                 * owner.getShooter())), world.getEntitiesWithinAABB(AbstractArrowEntity.class,
-                 * aabb).stream() .filter(e->e.getShooter() == null || e.getShooter() !=
-                 * owner.getShooter()))
-                 */
-                .flatMap(s -> s).filter(e -> (e.distanceToSqr(owner) < (reach * reach)) && e != owner)
+        return world.getEntitiesOfClass(Projectile.class, aabb).stream()
+                        .filter(e -> (e.getOwner() == null
+                                || e.getOwner() != owner.getShooter()))
+                .filter(e -> (e.distanceToSqr(owner) < (reach * reach)) && e != owner)
                 .collect(Collectors.toList());
     }
 

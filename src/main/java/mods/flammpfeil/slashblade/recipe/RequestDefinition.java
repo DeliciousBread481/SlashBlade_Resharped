@@ -1,23 +1,17 @@
 package mods.flammpfeil.slashblade.recipe;
 
 import com.google.common.collect.Lists;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import com.mojang.serialization.Codec;
-import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import mods.flammpfeil.slashblade.SlashBlade;
 import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 
+import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.item.SwordType;
 import mods.flammpfeil.slashblade.registry.slashblade.EnchantmentDefinition;
 import net.minecraft.Util;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -36,37 +30,6 @@ public record RequestDefinition(ResourceLocation name, int proudSoulCount, int k
                     SwordType.CODEC.listOf().optionalFieldOf("sword_type", Lists.newArrayList())
                             .forGetter(RequestDefinition::defaultType))
             .apply(instance, RequestDefinition::new));
-
-    public static RequestDefinition fromJSON(JsonObject json) {
-        return CODEC.parse(JsonOps.INSTANCE, json).resultOrPartial(msg -> SlashBlade.LOGGER.error("Failed to parse : {}", msg)).orElseGet(Builder.newInstance()::build);
-    }
-
-    public JsonElement toJson() {
-        return CODEC.encodeStart(JsonOps.INSTANCE, this).resultOrPartial(msg -> SlashBlade.LOGGER.error("Failed to encode : {}", msg)).orElseThrow();
-    }
-
-    public void toNetwork(FriendlyByteBuf buffer) {
-        buffer.writeResourceLocation(this.name());
-        buffer.writeInt(this.proudSoulCount());
-        buffer.writeInt(this.killCount());
-        buffer.writeInt(this.refineCount());
-        buffer.writeCollection(this.enchantments(), (buf, request) -> {
-            buf.writeResourceLocation(request.getEnchantmentID());
-            buf.writeByte(request.getEnchantmentLevel());
-        });
-
-        buffer.writeCollection(this.defaultType(), (buf, request) -> buf.writeUtf(request.name().toLowerCase()));
-    }
-
-    public static RequestDefinition fromNetwork(FriendlyByteBuf buffer) {
-        ResourceLocation name = buffer.readResourceLocation();
-        int proud = buffer.readInt();
-        int kill = buffer.readInt();
-        int refine = buffer.readInt();
-        var enchantments = buffer.readList((buf) -> new EnchantmentDefinition(buf.readResourceLocation(), buf.readByte()));
-        var types = buffer.readList((buf) -> SwordType.valueOf(buf.readUtf().toUpperCase()));
-        return new RequestDefinition(name, proud, kill, refine, enchantments, types);
-    }
 
     public void initItemStack(ItemStack blade) {
         var state = BladeStateAccess.of(blade).orElseThrow();
@@ -90,7 +53,11 @@ public record RequestDefinition(ResourceLocation name, int proudSoulCount, int k
                 }
             }
         });
-
+        
+        this.enchantments().forEach(ench -> {
+        	blade.enchant(ench.getEnchantment(), ench.getEnchantmentLevel());
+        });
+        ItemSlashBlade.updateRarity(blade);
     }
 
     public boolean test(ItemStack blade) {
@@ -101,7 +68,7 @@ public record RequestDefinition(ResourceLocation name, int proudSoulCount, int k
         if (!BladeStateAccess.of(blade).isPresent()) {
             return false;
         }
-        var state = BladeStateAccess.of(blade).orElseThrow(NullPointerException::new);
+        var state = BladeStateAccess.of(blade).orElseThrow();
         boolean nameCheck;
         if (this.name.equals(SlashBlade.prefix("none"))) {
             nameCheck = state.getTranslationKey().isBlank();
@@ -112,19 +79,14 @@ public record RequestDefinition(ResourceLocation name, int proudSoulCount, int k
         boolean killCheck = state.getKillCount() >= this.killCount();
         boolean refineCheck = state.getRefine() >= this.refineCount();
 
-        var itemEnchants = EnchantmentHelper.getEnchantmentsForCrafting(blade);
         for (var enchantment : this.enchantments()) {
-            var enchId = enchantment.getEnchantmentID();
+            var ench = enchantment.getEnchantment();
             var requiredLevel = enchantment.getEnchantmentLevel();
-            boolean found = false;
-            for (var entry : itemEnchants.entrySet()) {
-                if (entry.getKey().is(ResourceKey.create(Registries.ENCHANTMENT, enchId))
-                        && entry.getIntValue() >= requiredLevel) {
-                    found = true;
-                    break;
-                }
+            
+            if (blade.getEnchantmentLevel(ench) < requiredLevel) {
+                return false;
             }
-            if (!found) return false;
+            
         }
 
         boolean types = SwordType.from(blade).containsAll(this.defaultType());

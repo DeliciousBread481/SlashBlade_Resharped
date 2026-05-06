@@ -63,13 +63,12 @@ public class SlashBlade {
 
         NeoForge.EVENT_BUS.addListener(KnockBackHandler::onLivingKnockBack);
 
-        FallHandler.getInstance().register();
-        LockOnManager.getInstance().register();
         Guard.getInstance().register();
 
         NeoForge.EVENT_BUS.register(new StunManager());
 
         RefineHandler.getInstance().register();
+        AnvilRarityHandler.getInstance().register();
         KillCounter.getInstance().register();
         RankPointHandler.getInstance().register();
         AllowFlightOverrwrite.getInstance().register();
@@ -84,7 +83,6 @@ public class SlashBlade {
         SuperSlashArts.getInstance().register();
 
         ComboCommands.initDefaultStandByCommands();
-
 
     }
 

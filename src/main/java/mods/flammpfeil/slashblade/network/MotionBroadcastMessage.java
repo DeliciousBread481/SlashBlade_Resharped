@@ -42,6 +42,10 @@ public record MotionBroadcastMessage(UUID playerId, ResourceLocation combo, long
             return;
         }
 
+        if (target == ctx.player()) {
+            return;
+        }
+
         NeoForge.EVENT_BUS.post(new BladeMotionEvent(target, msg.combo(), msg.actionTime()));
     }
 }

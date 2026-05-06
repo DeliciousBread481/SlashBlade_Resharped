@@ -172,13 +172,13 @@ public class NBTHelper {
         }
     }
 
-    @SafeVarargs
+    @SuppressWarnings("unchecked")
+	@SafeVarargs
     public static <T> Optional<T> castValue(String key, CompoundTag src, T... defaultValue) {
         if (defaultValue == null) {
             return Optional.empty();
         }
 
-        @SuppressWarnings("unchecked")
         Class<T> type = (Class<T>) defaultValue.getClass().getComponentType();
 
         Object result = null;

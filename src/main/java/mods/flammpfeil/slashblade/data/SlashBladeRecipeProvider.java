@@ -10,7 +10,9 @@ import mods.flammpfeil.slashblade.recipe.SlashBladeSmithingRecipeBuilder;
 import mods.flammpfeil.slashblade.item.SwordType;
 import mods.flammpfeil.slashblade.registry.SlashBladeItems;
 import mods.flammpfeil.slashblade.registry.slashblade.EnchantmentDefinition;
+import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.data.PackOutput;
 import net.minecraft.data.recipes.RecipeCategory;
 import net.minecraft.data.recipes.RecipeOutput;
@@ -29,9 +31,10 @@ import net.neoforged.neoforge.common.conditions.IConditionBuilder;
 import java.util.concurrent.CompletableFuture;
 
 public class SlashBladeRecipeProvider extends RecipeProvider implements IConditionBuilder {
-
+	private final CompletableFuture<HolderLookup.Provider> lookup;
 	public SlashBladeRecipeProvider(PackOutput output, CompletableFuture<HolderLookup.Provider> registries) {
 		super(output, registries);
+		this.lookup = registries;
 	}
 
 	@Override
@@ -241,7 +244,7 @@ public class SlashBladeRecipeProvider extends RecipeProvider implements IConditi
 				.save(output);
 	}
 
-	private static ResourceLocation getEnchantmentID(ResourceKey<Enchantment> enchantment) {
-		return enchantment.location();
-	}
+    private Holder<Enchantment> getEnchantmentID(ResourceKey<Enchantment> enchantmentKey) {
+        return this.lookup.join().lookup(Registries.ENCHANTMENT).orElseThrow().getOrThrow(enchantmentKey);
+    }
 }

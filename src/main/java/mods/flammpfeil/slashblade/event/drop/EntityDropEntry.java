@@ -17,7 +17,7 @@ public record EntityDropEntry(ResourceLocation entityType, ResourceLocation blad
                     Codec.BOOL.optionalFieldOf("request_slashblade", false)
                             .forGetter(EntityDropEntry::requestSlashBladeKill),
                     Codec.BOOL.optionalFieldOf("drop_fixed", false).forGetter(EntityDropEntry::dropFixedPoint),
-                    Vec3.CODEC.optionalFieldOf("drop_point", new Vec3(0, 0, 0)).forGetter(EntityDropEntry::dropPoint)
+                    Vec3.CODEC.optionalFieldOf("drop_point", Vec3.ZERO).forGetter(EntityDropEntry::dropPoint)
 
             ).apply(instance, EntityDropEntry::new));
 
@@ -25,11 +25,11 @@ public record EntityDropEntry(ResourceLocation entityType, ResourceLocation blad
             .createRegistryKey(SlashBlade.prefix("entity_drop"));
 
     public EntityDropEntry(ResourceLocation entityType, ResourceLocation bladeName, float dropRate) {
-        this(entityType, bladeName, dropRate, true, false, new Vec3(0, 0, 0));
+        this(entityType, bladeName, dropRate, true, false, Vec3.ZERO);
     }
 
     public EntityDropEntry(ResourceLocation entityType, ResourceLocation bladeName, float dropRate, boolean request) {
-        this(entityType, bladeName, dropRate, request, false, new Vec3(0, 0, 0));
+        this(entityType, bladeName, dropRate, request, false, Vec3.ZERO);
     }
 
 }

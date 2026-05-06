@@ -161,7 +161,7 @@ public class EntityBlisteringSwords extends EntityAbstractSummonedSword {
         boolean isRight = spawnNum % 2 == 0;
         int level = spawnNum / 2;
 
-        Vec3 pos = new Vec3(0, 0, 0);
+        Vec3 pos = Vec3.ZERO;
 
         if (this.getVehicle() == null) {
             doFire();

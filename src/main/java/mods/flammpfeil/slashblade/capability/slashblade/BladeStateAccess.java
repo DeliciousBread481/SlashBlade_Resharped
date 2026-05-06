@@ -65,8 +65,10 @@ public class BladeStateAccess {
         stack.update(SlashBladeDataComponents.BLADE_STATE_DATA.get(), BladeStateData.DEFAULT, updater);
     }
 
-    public static BladeRuntimeState getRuntime(ItemStack stack) {
-        return BladeRuntimeStateStore.get(stack);
+    public static void ensureRuntimeComponent(ItemStack stack) {
+        if (!stack.has(SlashBladeDataComponents.BLADE_RUNTIME_STATE.get())) {
+            stack.set(SlashBladeDataComponents.BLADE_RUNTIME_STATE.get(), BladeRuntimeStateData.DEFAULT);
+        }
     }
 
     static class ComponentBackedState implements ISlashBladeState {
@@ -80,8 +82,13 @@ public class BladeStateAccess {
             return stack.getOrDefault(SlashBladeDataComponents.BLADE_STATE_DATA.get(), BladeStateData.DEFAULT);
         }
 
-        private BladeRuntimeState runtime() {
-            return BladeRuntimeStateStore.get(stack);
+        private BladeRuntimeStateData runtime() {
+            ensureRuntimeComponent(stack);
+            return stack.getOrDefault(SlashBladeDataComponents.BLADE_RUNTIME_STATE.get(), BladeRuntimeStateData.DEFAULT);
+        }
+
+        private void updateRuntime(java.util.function.UnaryOperator<BladeRuntimeStateData> updater) {
+            stack.update(SlashBladeDataComponents.BLADE_RUNTIME_STATE.get(), BladeRuntimeStateData.DEFAULT, updater);
         }
 
         private void update(UnaryOperator<BladeStateData> updater) {
@@ -368,46 +375,59 @@ public class BladeStateAccess {
             stack.set(DataComponents.MAX_DAMAGE, Math.max(1, damage));
         }
 
-        // ========== Runtime fields (BladeRuntimeState) ==========
+        // ========== Runtime fields (BladeRuntimeStateData) ==========
 
         @Override
-        public long getLastActionTime() { return runtime().getLastActionTime(); }
+        public long getLastActionTime() { return runtime().lastActionTime(); }
 
         @Override
-        public void setLastActionTime(long lastActionTime) { runtime().setLastActionTime(lastActionTime); }
+        public void setLastActionTime(long lastActionTime) {
+            updateRuntime(r -> new BladeRuntimeStateData(r.comboSeq(), lastActionTime, r.targetEntityId(), r.onClick(), r.fallDecreaseRate(), r.attackAmplifier()));
+        }
 
         @Override
-        public boolean onClick() { return runtime().isOnClick(); }
+        public boolean onClick() { return runtime().onClick(); }
 
         @Override
-        public void setOnClick(boolean onClick) { runtime().setOnClick(onClick); }
+        public void setOnClick(boolean onClick) {
+            updateRuntime(r -> new BladeRuntimeStateData(r.comboSeq(), r.lastActionTime(), r.targetEntityId(), onClick, r.fallDecreaseRate(), r.attackAmplifier()));
+        }
 
         @Override
-        public float getFallDecreaseRate() { return runtime().getFallDecreaseRate(); }
+        public float getFallDecreaseRate() { return runtime().fallDecreaseRate(); }
 
         @Override
-        public void setFallDecreaseRate(float fallDecreaseRate) { runtime().setFallDecreaseRate(fallDecreaseRate); }
+        public void setFallDecreaseRate(float fallDecreaseRate) {
+            updateRuntime(r -> new BladeRuntimeStateData(r.comboSeq(), r.lastActionTime(), r.targetEntityId(), r.onClick(), fallDecreaseRate, r.attackAmplifier()));
+        }
 
         @Override
-        public float getAttackAmplifier() { return runtime().getAttackAmplifier(); }
+        public float getAttackAmplifier() { return runtime().attackAmplifier(); }
 
         @Override
-        public void setAttackAmplifier(float attackAmplifier) { runtime().setAttackAmplifier(attackAmplifier); }
+        public void setAttackAmplifier(float attackAmplifier) {
+            updateRuntime(r -> new BladeRuntimeStateData(r.comboSeq(), r.lastActionTime(), r.targetEntityId(), r.onClick(), r.fallDecreaseRate(), attackAmplifier));
+        }
 
         @Override
         public ResourceLocation getComboSeq() {
-            ResourceLocation seq = runtime().getComboSeq();
+            ResourceLocation seq = runtime().comboSeq();
             return seq != null ? seq : ComboStateRegistry.NONE.getId();
         }
 
         @Override
-        public void setComboSeq(ResourceLocation comboSeq) { runtime().setComboSeq(comboSeq); }
+        public void setComboSeq(ResourceLocation comboSeq) {
+            ResourceLocation resolved = comboSeq != null ? comboSeq : ComboStateRegistry.NONE.getId();
+            updateRuntime(r -> new BladeRuntimeStateData(resolved, r.lastActionTime(), r.targetEntityId(), r.onClick(), r.fallDecreaseRate(), r.attackAmplifier()));
+        }
 
         @Override
-        public int getTargetEntityId() { return runtime().getTargetEntityId(); }
+        public int getTargetEntityId() { return runtime().targetEntityId(); }
 
         @Override
-        public void setTargetEntityId(int id) { runtime().setTargetEntityId(id); }
+        public void setTargetEntityId(int id) {
+            updateRuntime(r -> new BladeRuntimeStateData(r.comboSeq(), r.lastActionTime(), id, r.onClick(), r.fallDecreaseRate(), r.attackAmplifier()));
+        }
 
         // ========== Lifecycle ==========
 
@@ -457,13 +477,13 @@ public class BladeStateAccess {
                 tag.put("SpecialEffects", seList);
             }
 
-            BladeRuntimeState rt = runtime();
-            tag.putLong("lastActionTime", rt.getLastActionTime());
-            tag.putInt("TargetEntity", rt.getTargetEntityId());
-            tag.putBoolean("_onClick", rt.isOnClick());
-            tag.putFloat("fallDecreaseRate", rt.getFallDecreaseRate());
-            tag.putFloat("AttackAmplifier", rt.getAttackAmplifier());
-            tag.putString("currentCombo", rt.getComboSeq().toString());
+            BladeRuntimeStateData rt = runtime();
+            tag.putLong("lastActionTime", rt.lastActionTime());
+            tag.putInt("TargetEntity", rt.targetEntityId());
+            tag.putBoolean("_onClick", rt.onClick());
+            tag.putFloat("fallDecreaseRate", rt.fallDecreaseRate());
+            tag.putFloat("AttackAmplifier", rt.attackAmplifier());
+            tag.putString("currentCombo", rt.comboSeq().toString());
             tag.putInt("Damage", stack.getDamageValue());
             tag.putInt("maxDamage", stack.getMaxDamage());
 
@@ -529,13 +549,25 @@ public class BladeStateAccess {
             if (tag.contains("maxDamage")) stack.set(DataComponents.MAX_DAMAGE, Math.max(1, tag.getInt("maxDamage")));
             if (tag.contains("Damage")) stack.setDamageValue(tag.getInt("Damage"));
 
-            BladeRuntimeState rt = runtime();
-            if (tag.contains("lastActionTime")) rt.setLastActionTime(tag.getLong("lastActionTime"));
-            if (tag.contains("TargetEntity")) rt.setTargetEntityId(tag.getInt("TargetEntity"));
-            if (tag.contains("_onClick")) rt.setOnClick(tag.getBoolean("_onClick"));
-            if (tag.contains("fallDecreaseRate")) rt.setFallDecreaseRate(tag.getFloat("fallDecreaseRate"));
-            if (tag.contains("AttackAmplifier")) rt.setAttackAmplifier(tag.getFloat("AttackAmplifier"));
-            if (tag.contains("currentCombo")) rt.setComboSeq(ResourceLocation.tryParse(tag.getString("currentCombo")));
+            ResourceLocation comboSeq = ComboStateRegistry.NONE.getId();
+            if (tag.contains("currentCombo")) {
+                ResourceLocation parsed = ResourceLocation.tryParse(tag.getString("currentCombo"));
+                if (parsed != null) comboSeq = parsed;
+            }
+            long lastActionTime = tag.contains("lastActionTime") ? tag.getLong("lastActionTime") : 0L;
+            int targetEntityId = tag.contains("TargetEntity") ? tag.getInt("TargetEntity") : -1;
+            boolean onClick = tag.contains("_onClick") && tag.getBoolean("_onClick");
+            float fallDecreaseRate = tag.contains("fallDecreaseRate") ? tag.getFloat("fallDecreaseRate") : 0.0F;
+            float attackAmplifier = tag.contains("AttackAmplifier") ? tag.getFloat("AttackAmplifier") : 0.0F;
+
+            BladeRuntimeStateData rt = new BladeRuntimeStateData(comboSeq, lastActionTime, targetEntityId, onClick, fallDecreaseRate, attackAmplifier);
+            stack.set(SlashBladeDataComponents.BLADE_RUNTIME_STATE.get(), rt);
+
+            updateRarityIfApplicable();
+        }
+
+        private void updateRarityIfApplicable() {
+            ItemSlashBlade.updateRarity(stack);
         }
     }
 }

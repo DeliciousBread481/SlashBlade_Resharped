@@ -43,6 +43,30 @@ public class Face {
     public Vertex[] vertexNormals;
     public Vertex faceNormal;
     public TextureCoordinate[] textureCoordinates;
+    public boolean[] texUSign;
+    public boolean[] texVSign;
+
+    private static final ThreadLocal<Vector3f> NORMAL_TMP = ThreadLocal.withInitial(Vector3f::new);
+
+    public void initTexSigns() {
+        if (textureCoordinates != null && textureCoordinates.length > 0) {
+            float rawAvgU = 0F;
+            float rawAvgV = 0F;
+            for (TextureCoordinate tc : textureCoordinates) {
+                rawAvgU += tc.u;
+                rawAvgV += tc.v;
+            }
+            rawAvgU /= textureCoordinates.length;
+            rawAvgV /= textureCoordinates.length;
+
+            texUSign = new boolean[textureCoordinates.length];
+            texVSign = new boolean[textureCoordinates.length];
+            for (int i = 0; i < textureCoordinates.length; i++) {
+                texUSign[i] = textureCoordinates[i].u > rawAvgU;
+                texVSign[i] = textureCoordinates[i].v > rawAvgV;
+            }
+        }
+    }
 
     @OnlyIn(Dist.CLIENT)
     public void addFaceForRender(VertexConsumer tessellator, PoseStack matrixStack, int light, int color) {
@@ -85,23 +109,18 @@ public class Face {
         float offsetU, offsetV;
         wr.addVertex(transform, vertices[i].x, vertices[i].y, vertices[i].z);
 
-        wr.setColor(FastColor.ARGB32.red(color), FastColor.ARGB32.green(color), FastColor.ARGB32.blue(color),
-                alphaOverride.apply(new Vector4f(vertices[i].x, vertices[i].y, vertices[i].z, 1.0F), FastColor.ARGB32.alpha(color))
-        );
+        int alpha = FastColor.ARGB32.alpha(color);
+        if (Face.alphaOverride == Face.alphaOverrideYZZ && vertices[i].y == 0) {
+            alpha = 0;
+        }
+        wr.setColor(FastColor.ARGB32.red(color), FastColor.ARGB32.green(color), FastColor.ARGB32.blue(color), alpha);
 
         if ((textureCoordinates != null) && (textureCoordinates.length > 0)) {
-            offsetU = textureOffset;
-            offsetV = textureOffset;
+            offsetU = texUSign != null && texUSign[i] ? -textureOffset : textureOffset;
+            offsetV = texVSign != null && texVSign[i] ? -textureOffset : textureOffset;
 
             float textureU = textureCoordinates[i].u * uvOperator.x() + uvOperator.z();
             float textureV = textureCoordinates[i].v * uvOperator.y() + uvOperator.w();
-
-            if (textureU > averageU) {
-                offsetU = -offsetU;
-            }
-            if (textureV > averageV) {
-                offsetV = -offsetV;
-            }
 
             wr.setUv(textureU + offsetU, textureV + offsetV);
         } else {
@@ -111,18 +130,17 @@ public class Face {
         wr.setOverlay(OverlayTexture.NO_OVERLAY);
         wr.setLight(light);
 
-        Vector3f vector3f;
+        Vector3f vecNormal;
         if (vertexNormals != null) {
             Vertex normal = vertexNormals[i];
-
-            vector3f = new Vector3f(normal.x, normal.y, normal.z);
+            vecNormal = NORMAL_TMP.get().set(normal.x, normal.y, normal.z);
         } else {
-            vector3f = new Vector3f(faceNormal.x, faceNormal.y, faceNormal.z);
+            vecNormal = NORMAL_TMP.get().set(faceNormal.x, faceNormal.y, faceNormal.z);
         }
 
-        vector3f.mul(normalTransform);
-        vector3f.normalize();
-        wr.setNormal(vector3f.x(), vector3f.y(), vector3f.z());
+        vecNormal.mul(normalTransform);
+        vecNormal.normalize();
+        wr.setNormal(vecNormal.x(), vecNormal.y(), vecNormal.z());
     }
 
     public Vertex calculateFaceNormal() {

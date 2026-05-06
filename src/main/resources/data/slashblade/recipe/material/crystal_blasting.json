@@ -1,9 +1,13 @@
 {
   "type": "minecraft:blasting",
+  "category": "misc",
   "ingredient": {
     "item": "slashblade:proudsoul_sphere"
   },
-  "result": "slashblade:proudsoul_crystal",
+  "result": {
+     "count": 1,
+     "id": "slashblade:proudsoul_crystal" 
+  },
   "experience": 0.1,
   "cookingtime": 300
 }

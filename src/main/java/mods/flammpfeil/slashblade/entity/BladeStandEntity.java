@@ -127,7 +127,7 @@ public class BladeStandEntity extends ItemFrame implements IEntityWithComplexSpa
             return super.hurt(damageSource, cat);
         }
 
-        ISlashBladeState state = BladeStateAccess.of(blade).orElseThrow(NullPointerException::new);
+        ISlashBladeState state = BladeStateAccess.of(blade).orElseThrow();
         if (NeoForge.EVENT_BUS.post(new SlashBladeEvent.BladeStandAttackEvent(blade, state, this, damageSource)).isCanceled()) {
             return true;
         }

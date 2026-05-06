@@ -5,9 +5,8 @@ import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.registry.SlashBladeItems;
 import mods.flammpfeil.slashblade.registry.slashblade.SlashBladeDefinition;
-import net.minecraft.core.Holder;
+import mods.flammpfeil.slashblade.util.EnchantmentsHelper;
 import net.minecraft.core.HolderLookup;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
@@ -17,9 +16,6 @@ import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.ShapedRecipe;
 import net.minecraft.world.item.crafting.ShapedRecipePattern;
-import net.minecraft.world.item.enchantment.Enchantment;
-import net.minecraft.world.item.enchantment.EnchantmentHelper;
-import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.core.registries.BuiltInRegistries;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -95,7 +91,7 @@ public class SlashBladeShapedRecipe extends ShapedRecipe {
             result = new ItemStack(SlashBladeItems.SLASHBLADE.get());
         }
 
-        var resultState = BladeStateAccess.of(result).orElseThrow(NullPointerException::new);
+        var resultState = BladeStateAccess.of(result).orElseThrow();
         boolean sumRefine = SlashBladeConfig.DO_CRAFTING_SUM_REFINE.get();
         int proudSoul = resultState.getProudSoulCount();
         int killCount = resultState.getKillCount();
@@ -104,7 +100,7 @@ public class SlashBladeShapedRecipe extends ShapedRecipe {
             if (!(stack.getItem() instanceof ItemSlashBlade)) {
                 continue;
             }
-            var ingredientState = BladeStateAccess.of(stack).orElseThrow(NullPointerException::new);
+            var ingredientState = BladeStateAccess.of(stack).orElseThrow();
 
             proudSoul += ingredientState.getProudSoulCount();
             killCount += ingredientState.getKillCount();
@@ -113,43 +109,14 @@ public class SlashBladeShapedRecipe extends ShapedRecipe {
             } else {
                 refine = Math.max(refine, ingredientState.getRefine());
             }
-            updateEnchantment(result, stack, access);
+            EnchantmentsHelper.updateEnchantment(result, stack, access);
         }
         resultState.setProudSoulCount(proudSoul);
         resultState.setKillCount(killCount);
         resultState.setRefine(refine);
+        ItemSlashBlade.updateRarity(result);
 
         return result;
-    }
-
-    private void updateEnchantment(ItemStack result, ItemStack ingredient, HolderLookup.Provider access) {
-        HolderLookup.RegistryLookup<Enchantment> enchantmentLookup = access.lookupOrThrow(Registries.ENCHANTMENT);
-        ItemEnchantments.Mutable newItemEnchants = new ItemEnchantments.Mutable(EnchantmentHelper.getEnchantmentsForCrafting(result));
-        ItemEnchantments oldItemEnchants = ingredient.getAllEnchantments(enchantmentLookup);
-        for (var entry : oldItemEnchants.entrySet()) {
-            Holder<Enchantment> enchantment = entry.getKey();
-            int destLevel = newItemEnchants.getLevel(enchantment);
-            int srcLevel = entry.getIntValue();
-
-            srcLevel = Math.max(srcLevel, destLevel);
-            srcLevel = Math.min(srcLevel, enchantment.value().getMaxLevel());
-
-            boolean canApplyFlag = result.supportsEnchantment(enchantment);
-            if (canApplyFlag) {
-                for (var currentEntry : newItemEnchants.toImmutable().entrySet()) {
-                    Holder<Enchantment> currentEnchantment = currentEntry.getKey();
-                    if (!currentEnchantment.equals(enchantment)
-                            && !Enchantment.areCompatible(enchantment, currentEnchantment)) {
-                        canApplyFlag = false;
-                        break;
-                    }
-                }
-                if (canApplyFlag) {
-                    newItemEnchants.set(enchantment, srcLevel);
-                }
-            }
-        }
-        EnchantmentHelper.setEnchantments(result, newItemEnchants.toImmutable());
     }
 
     @Override

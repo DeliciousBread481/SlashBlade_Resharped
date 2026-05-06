@@ -96,7 +96,6 @@ public class EntitySlashEffect extends Projectile implements IShootable {
     public EntitySlashEffect(EntityType<? extends Projectile> entityTypeIn, Level worldIn) {
         super(entityTypeIn, worldIn);
         this.setNoGravity(true);
-        // this.setGlowing(true);
     }
 
     @Override
@@ -306,7 +305,7 @@ public class EntitySlashEffect extends Projectile implements IShootable {
 
             Vec3 normal3d = new Vec3(normal.x(), normal.y(), normal.z());
 
-            BlockHitResult rayResult = this.getCommandSenderWorld().clip(new ClipContext(start.add(normal3d.scale(1.5)),
+            BlockHitResult rayResult = this.level().clip(new ClipContext(start.add(normal3d.scale(1.5)),
                     start.add(normal3d.scale(3)), ClipContext.Block.COLLIDER, ClipContext.Fluid.ANY, this));
 
             if (getShooter() != null && !getShooter().isInWaterOrRain()
@@ -363,6 +362,12 @@ public class EntitySlashEffect extends Projectile implements IShootable {
                 this.remove(RemovalReason.DISCARDED);
             }
         }
+    }
+
+    @Override
+    public void remove(RemovalReason reason) {
+        super.remove(reason);
+        alreadyHits.clear();
     }
 
     public int getColor() {

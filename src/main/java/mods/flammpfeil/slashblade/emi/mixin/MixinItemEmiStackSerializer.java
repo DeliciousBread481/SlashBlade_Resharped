@@ -60,7 +60,7 @@ public abstract class MixinItemEmiStackSerializer implements EmiStackSerializer<
             if (itemStack.getItem() instanceof ItemSlashBlade) {
                 var optional = BladeStateAccess.of(itemStack);
                 if (optional.isPresent()) {
-                    json.addProperty("sbCaps", optional.orElseThrow(NullPointerException::new).serializeNBT().getAsString());
+                    json.addProperty("sbCaps", optional.orElseThrow().serializeNBT().getAsString());
 
                 }
             }

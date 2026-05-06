@@ -9,9 +9,10 @@ import mods.flammpfeil.slashblade.registry.slashblade.EnchantmentDefinition;
 import mods.flammpfeil.slashblade.registry.slashblade.PropertiesDefinition;
 import mods.flammpfeil.slashblade.registry.slashblade.RenderDefinition;
 import mods.flammpfeil.slashblade.registry.slashblade.SlashBladeDefinition;
+import net.minecraft.core.Holder;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.Enchantments;
 import org.apache.commons.compress.utils.Lists;
@@ -68,7 +69,7 @@ public class SlashBladeBuiltInRegistry {
                                 .slashArtsType(SlashArtsRegistry.DRIVE_VERTICAL.getId())
                                 .addSpecialEffect(SpecialEffectsRegistry.WITHER_EDGE.getId())
                                 .build(),
-                        List.of(new EnchantmentDefinition(getEnchantmentID(Enchantments.POWER), 2))));
+                        List.of(new EnchantmentDefinition(getEnchantmentID(bootstrap, Enchantments.POWER), 2))));
 
         bootstrap.register(SABIGATANA,
                 new SlashBladeDefinition(SlashBlade.prefix("sabigatana"),
@@ -111,8 +112,8 @@ public class SlashBladeBuiltInRegistry {
                         PropertiesDefinition.Builder.newInstance().baseAttackModifier(5.0F).maxDamage(70)
                                 .slashArtsType(SlashArtsRegistry.DRIVE_VERTICAL.getId())
                                 .defaultSwordType(List.of(SwordType.BEWITCHED)).build(),
-                        List.of(new EnchantmentDefinition(getEnchantmentID(Enchantments.SMITE), 3),
-                                new EnchantmentDefinition(getEnchantmentID(Enchantments.UNBREAKING), 3))));
+                        List.of(new EnchantmentDefinition(getEnchantmentID(bootstrap, Enchantments.SMITE), 3),
+                                new EnchantmentDefinition(getEnchantmentID(bootstrap, Enchantments.UNBREAKING), 3))));
 
         bootstrap.register(YASHA, new SlashBladeDefinition(SlashBlade.prefix("yasha"),
                 RenderDefinition.Builder.newInstance().textureName(SlashBlade.prefix("model/named/yasha/yasha.png"))
@@ -242,9 +243,9 @@ public class SlashBladeBuiltInRegistry {
                 PropertiesDefinition.Builder.newInstance().baseAttackModifier(5.0F).maxDamage(70)
                         .slashArtsType(SlashArtsRegistry.PIERCING.getId())
                         .defaultSwordType(List.of(SwordType.BEWITCHED)).build(),
-                List.of(new EnchantmentDefinition(getEnchantmentID(Enchantments.SMITE), 4),
-                        new EnchantmentDefinition(getEnchantmentID(Enchantments.KNOCKBACK), 2),
-                        new EnchantmentDefinition(getEnchantmentID(Enchantments.FIRE_ASPECT), 2))));
+                List.of(new EnchantmentDefinition(getEnchantmentID(bootstrap, Enchantments.SMITE), 4),
+                        new EnchantmentDefinition(getEnchantmentID(bootstrap, Enchantments.KNOCKBACK), 2),
+                        new EnchantmentDefinition(getEnchantmentID(bootstrap, Enchantments.FIRE_ASPECT), 2))));
 
         bootstrap.register(FOX_WHITE, new SlashBladeDefinition(SlashBlade.prefix("fox_white"),
                 RenderDefinition.Builder.newInstance().textureName(SlashBlade.prefix("model/named/sange/white.png"))
@@ -253,11 +254,11 @@ public class SlashBladeBuiltInRegistry {
                         .build(),
                 PropertiesDefinition.Builder.newInstance().baseAttackModifier(5.0F).maxDamage(70)
                         .defaultSwordType(List.of(SwordType.BEWITCHED)).build(),
-                List.of(new EnchantmentDefinition(getEnchantmentID(Enchantments.KNOCKBACK), 2),
-                        new EnchantmentDefinition(getEnchantmentID(Enchantments.BANE_OF_ARTHROPODS), 2),
-                        new EnchantmentDefinition(getEnchantmentID(Enchantments.UNBREAKING), 3),
-                        new EnchantmentDefinition(getEnchantmentID(Enchantments.FIRE_ASPECT), 2),
-                        new EnchantmentDefinition(getEnchantmentID(Enchantments.LOOTING), 3))));
+                List.of(new EnchantmentDefinition(getEnchantmentID(bootstrap, Enchantments.KNOCKBACK), 2),
+                        new EnchantmentDefinition(getEnchantmentID(bootstrap, Enchantments.BANE_OF_ARTHROPODS), 2),
+                        new EnchantmentDefinition(getEnchantmentID(bootstrap, Enchantments.UNBREAKING), 3),
+                        new EnchantmentDefinition(getEnchantmentID(bootstrap, Enchantments.FIRE_ASPECT), 2),
+                        new EnchantmentDefinition(getEnchantmentID(bootstrap, Enchantments.LOOTING), 3))));
 
         bootstrap.register(YAMATO,
                 new SlashBladeDefinition(SlashBlade.prefix("yamato"),
@@ -267,9 +268,9 @@ public class SlashBladeBuiltInRegistry {
                                 .build(),
                         PropertiesDefinition.Builder.newInstance().baseAttackModifier(7.0F)
                                 .defaultSwordType(List.of(SwordType.BEWITCHED)).build(),
-                        List.of(new EnchantmentDefinition(getEnchantmentID(Enchantments.SOUL_SPEED), 2),
-                                new EnchantmentDefinition(getEnchantmentID(Enchantments.POWER), 5),
-                                new EnchantmentDefinition(getEnchantmentID(Enchantments.FEATHER_FALLING), 4))));
+                        List.of(new EnchantmentDefinition(getEnchantmentID(bootstrap, Enchantments.SOUL_SPEED), 2),
+                                new EnchantmentDefinition(getEnchantmentID(bootstrap, Enchantments.POWER), 5),
+                                new EnchantmentDefinition(getEnchantmentID(bootstrap, Enchantments.FEATHER_FALLING), 4))));
 
         bootstrap.register(YAMATO_BROKEN,
                 new SlashBladeDefinition(SlashBlade.prefix("yamato"),
@@ -289,9 +290,9 @@ public class SlashBladeBuiltInRegistry {
                 PropertiesDefinition.Builder.newInstance().baseAttackModifier(6.0F)
                         .slashArtsType(SlashArtsRegistry.DRIVE_HORIZONTAL.getId())
                         .defaultSwordType(List.of(SwordType.BEWITCHED)).build(),
-                List.of(new EnchantmentDefinition(getEnchantmentID(Enchantments.FIRE_ASPECT), 1),
-                        new EnchantmentDefinition(getEnchantmentID(Enchantments.SHARPNESS), 4),
-                        new EnchantmentDefinition(getEnchantmentID(Enchantments.UNBREAKING), 3))));
+                List.of(new EnchantmentDefinition(getEnchantmentID(bootstrap, Enchantments.FIRE_ASPECT), 1),
+                        new EnchantmentDefinition(getEnchantmentID(bootstrap, Enchantments.SHARPNESS), 4),
+                        new EnchantmentDefinition(getEnchantmentID(bootstrap, Enchantments.UNBREAKING), 3))));
 
         bootstrap.register(MURAMASA,
                 new SlashBladeDefinition(SlashBlade.prefix("muramasa"),
@@ -316,8 +317,8 @@ public class SlashBladeBuiltInRegistry {
 
     }
 
-    private static ResourceLocation getEnchantmentID(ResourceKey<Enchantment> enchantmentKey) {
-        return enchantmentKey.location();
+    private static Holder<Enchantment> getEnchantmentID(BootstrapContext<SlashBladeDefinition> bootstrap, ResourceKey<Enchantment> enchantmentKey) {
+        return bootstrap.lookup(Registries.ENCHANTMENT).getOrThrow(enchantmentKey);
     }
 
     private static ResourceKey<SlashBladeDefinition> register(String id) {

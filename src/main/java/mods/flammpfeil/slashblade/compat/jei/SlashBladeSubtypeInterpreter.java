@@ -17,7 +17,7 @@ public class SlashBladeSubtypeInterpreter implements ISubtypeInterpreter<ItemSta
 	@Override
 	@Nullable
 	public Object getSubtypeData(ItemStack ingredient, UidContext context) {
-		return BladeStateAccess.of(ingredient).orElse(null);
+		return BladeStateAccess.of(ingredient).map(ISlashBladeState::getTranslationKey).orElse("");
 	}
 
 	@Override

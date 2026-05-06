@@ -84,7 +84,10 @@ public class BlandStandEventHandler {
         CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         if (tag.contains("SpecialEffectType")) {
             var bladeStand = event.getBladeStand();
-            ResourceLocation SEKey = ResourceLocation.parse(tag.getString("SpecialEffectType"));
+            ResourceLocation SEKey = ResourceLocation.tryParse(tag.getString("SpecialEffectType"));
+            if (SEKey == null) {
+                return;
+            }
             if (!SpecialEffectsRegistry.REGISTRY.containsKey(SEKey)) {
                 return;
             }
@@ -132,7 +135,10 @@ public class BlandStandEventHandler {
             return;
         }
 
-        ResourceLocation SAKey = ResourceLocation.parse(tag.getString("SpecialAttackType"));
+        ResourceLocation SAKey = ResourceLocation.tryParse(tag.getString("SpecialAttackType"));
+        if (SAKey == null) {
+            return;
+        }
         if (!SlashArtsRegistry.REGISTRY.containsKey(SAKey)) {
             return;
         }
@@ -150,9 +156,10 @@ public class BlandStandEventHandler {
                 }
 
                 NeoForge.EVENT_BUS.post(e);
-                if (e.isCanceled()) {
-                    return;
-                }
+            if (e.isCanceled()) {
+                event.setCanceled(true);
+                return;
+            }
 
                 if (stack.getCount() < e.getShrinkCount()) {
                     return;
@@ -379,6 +386,7 @@ public class BlandStandEventHandler {
 
             NeoForge.EVENT_BUS.post(e);
             if (e.isCanceled()) {
+                event.setCanceled(true);
                 return;
             }
 
@@ -393,6 +401,7 @@ public class BlandStandEventHandler {
         }
 
         if (stack.getCount() < totalShrinkCount.get()) {
+            event.setCanceled(true);
             return;
         }
         stack.shrink(totalShrinkCount.get());

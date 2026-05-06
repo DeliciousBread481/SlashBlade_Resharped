@@ -5,6 +5,7 @@ import mods.flammpfeil.slashblade.capability.concentrationrank.CapabilityConcent
 import mods.flammpfeil.slashblade.capability.concentrationrank.IConcentrationRank;
 import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import mods.flammpfeil.slashblade.event.SlashBladeEvent;
+import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.item.SwordType;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -52,6 +53,7 @@ public class KillCounter {
             var killCountEvent = new SlashBladeEvent.AddKillCountEvent(stack, state, 1);
             NeoForge.EVENT_BUS.post(killCountEvent);
             state.setKillCount(state.getKillCount() + killCountEvent.getNewCount());
+            ItemSlashBlade.updateRarity(stack);
         });
     }
 
@@ -71,7 +73,7 @@ public class KillCounter {
 
         IConcentrationRank.ConcentrationRanks rankBonus = player
                 .getExistingData(CapabilityConcentrationRank.RANK_POINT.get())
-                .map(rp -> rp.getRank(player.getCommandSenderWorld().getGameTime()))
+                .map(rp -> rp.getRank(player.level().getGameTime()))
                 .orElse(IConcentrationRank.ConcentrationRanks.NONE);
         int souls = (int) Math.floor(event.getDroppedExperience() * (1.0F + (rankBonus.level * 0.1F)));
 
@@ -85,6 +87,7 @@ public class KillCounter {
                 int damage = Math.max(1, newCount / 4);
                 stack.setDamageValue(Math.max(stack.getDamageValue() - damage, 0));
             }
+            ItemSlashBlade.updateRarity(stack);
         });
 
     }

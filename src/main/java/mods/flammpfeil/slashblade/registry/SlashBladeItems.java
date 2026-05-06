@@ -62,7 +62,10 @@ public class SlashBladeItems {
                 public void appendHoverText(@NotNull ItemStack stack, @NotNull Item.TooltipContext context, @NotNull List<Component> components, @NotNull TooltipFlag flag) {
                     CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
                     if (tag.contains("SpecialAttackType")) {
-                        ResourceLocation SA = ResourceLocation.parse(tag.getString("SpecialAttackType"));
+                        ResourceLocation SA = ResourceLocation.tryParse(tag.getString("SpecialAttackType"));
+                        if (SA == null) {
+                            return;
+                        }
                         if (SlashArtsRegistry.REGISTRY.containsKey(SA) && !Objects.equals(SlashArtsRegistry.REGISTRY.get(SA), SlashArtsRegistry.NONE.get())) {
                             components.add(Component.translatable("slashblade.tooltip.slash_art", Objects.requireNonNull(SlashArtsRegistry.REGISTRY.get(SA)).getDescription()).withStyle(ChatFormatting.GRAY));
                         }
@@ -84,7 +87,10 @@ public class SlashBladeItems {
                     if (tag.contains("SpecialEffectType")) {
                         Minecraft mcinstance = Minecraft.getInstance();
                         Player player = mcinstance.player;
-                        ResourceLocation se = ResourceLocation.parse(tag.getString("SpecialEffectType"));
+                        ResourceLocation se = ResourceLocation.tryParse(tag.getString("SpecialEffectType"));
+                        if (se == null) {
+                            return;
+                        }
                         if (SpecialEffectsRegistry.REGISTRY.containsKey(se)) {
                             if (player != null) {
                                 components.add(Component.translatable("slashblade.tooltip.special_effect", SpecialEffect.getDescription(se),

@@ -17,6 +17,11 @@ public class SlashBladeDataComponents {
             b -> b.persistent(BladeStateData.CODEC)
                   .networkSynchronized(BladeStateData.STREAM_CODEC));
 
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<BladeRuntimeStateData>> BLADE_RUNTIME_STATE =
+        register("blade_runtime_state",
+            b -> b.persistent(BladeRuntimeStateData.CODEC)
+                  .networkSynchronized(BladeRuntimeStateData.STREAM_CODEC));
+
     private static <T> DeferredHolder<DataComponentType<?>, DataComponentType<T>> register(
             String name, UnaryOperator<DataComponentType.Builder<T>> builder) {
         return COMPONENTS.register(name,

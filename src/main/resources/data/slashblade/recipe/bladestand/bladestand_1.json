@@ -10,6 +10,7 @@
     }
   ],
   "result": {
-    "item": "slashblade:bladestand_1"
+    "id": "slashblade:bladestand_1",
+    "count": 1
   }
 }

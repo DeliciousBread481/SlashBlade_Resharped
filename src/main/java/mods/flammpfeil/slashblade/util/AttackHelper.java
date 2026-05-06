@@ -111,7 +111,7 @@ public class AttackHelper {
     public static float getRankBonus(LivingEntity attacker) {
         IConcentrationRank rankData = attacker.getData(CapabilityConcentrationRank.RANK_POINT.get());
         IConcentrationRank.ConcentrationRanks rankBonus = rankData != null
-                ? rankData.getRank(attacker.getCommandSenderWorld().getGameTime())
+                ? rankData.getRank(attacker.level().getGameTime())
                 : IConcentrationRank.ConcentrationRanks.NONE;
         double rankDamageBonus = rankBonus.level / 2.0;
         if (IConcentrationRank.ConcentrationRanks.S.level <= rankBonus.level) {

@@ -13,7 +13,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -34,10 +33,6 @@ public class WavefrontObject {
     private static final Pattern face_V_VN_Pattern = Pattern.compile("(f( \\d+//\\d+){3,4} *\\n)|(f( \\d+//\\d+){3,4} *$)");
     private static final Pattern face_V_Pattern = Pattern.compile("(f( \\d+){3,4} *\\n)|(f( \\d+){3,4} *$)");
     private static final Pattern groupObjectPattern = Pattern.compile("([go]( [\\w\\d\\.]+) *\\n)|([go]( [\\w\\d\\.]+) *$)");
-
-    private static Matcher vertexMatcher, vertexNormalMatcher, textureCoordinateMatcher;
-    private static Matcher face_V_VT_VN_Matcher, face_V_VT_Matcher, face_V_VN_Matcher, face_V_Matcher;
-    private static Matcher groupObjectMatcher;
 
     public ArrayList<Vertex> vertices = new ArrayList<>();
     public ArrayList<Vertex> vertexNormals = new ArrayList<>();
@@ -99,7 +94,7 @@ public class WavefrontObject {
                         Face face = parseFace(currentLine, lineCount);
 
                         currentGroupObject.faces.add(face);
-                    } else if (currentLine.startsWith("g ") | currentLine.startsWith("o ")) {
+                    } else if (currentLine.startsWith("g ") || currentLine.startsWith("o ")) {
                         GroupObject group = parseGroupObject(currentLine, lineCount);
 
                         if (group != null) {
@@ -289,6 +284,7 @@ public class WavefrontObject {
                 }
 
                 face.faceNormal = face.calculateFaceNormal();
+                face.initTexSigns();
             }
             // f v1/vt1 v2/vt2 v3/vt3 ...
             else if (isValidFace_V_VT_Line(line)) {
@@ -303,6 +299,7 @@ public class WavefrontObject {
                 }
 
                 face.faceNormal = face.calculateFaceNormal();
+                face.initTexSigns();
             }
             // f v1//vn1 v2//vn2 v3//vn3 ...
             else if (isValidFace_V_VN_Line(line)) {
@@ -317,6 +314,7 @@ public class WavefrontObject {
                 }
 
                 face.faceNormal = face.calculateFaceNormal();
+                face.initTexSigns();
             }
             // f v1 v2 v3 ...
             else if (isValidFace_V_Line(line)) {
@@ -327,6 +325,7 @@ public class WavefrontObject {
                 }
 
                 face.faceNormal = face.calculateFaceNormal();
+                face.initTexSigns();
             } else {
                 throw new ModelFormatException("Error parsing entry ('" + line + "'" + ", line " + lineCount
                         + ") in file '" + fileName + "' - Incorrect format");
@@ -363,12 +362,7 @@ public class WavefrontObject {
      * @return true if the line is a valid vertex, false otherwise
      */
     private static boolean isValidVertexLine(String line) {
-        if (vertexMatcher != null) {
-            vertexMatcher.reset();
-        }
-
-        vertexMatcher = vertexPattern.matcher(line);
-        return vertexMatcher.matches();
+        return vertexPattern.matcher(line).matches();
     }
 
     /***
@@ -378,12 +372,7 @@ public class WavefrontObject {
      * @return true if the line is a valid vertex normal, false otherwise
      */
     private static boolean isValidVertexNormalLine(String line) {
-        if (vertexNormalMatcher != null) {
-            vertexNormalMatcher.reset();
-        }
-
-        vertexNormalMatcher = vertexNormalPattern.matcher(line);
-        return vertexNormalMatcher.matches();
+        return vertexNormalPattern.matcher(line).matches();
     }
 
     /***
@@ -394,12 +383,7 @@ public class WavefrontObject {
      * @return true if the line is a valid texture coordinate, false otherwise
      */
     private static boolean isValidTextureCoordinateLine(String line) {
-        if (textureCoordinateMatcher != null) {
-            textureCoordinateMatcher.reset();
-        }
-
-        textureCoordinateMatcher = textureCoordinatePattern.matcher(line);
-        return textureCoordinateMatcher.matches();
+        return textureCoordinatePattern.matcher(line).matches();
     }
 
     /***
@@ -412,12 +396,7 @@ public class WavefrontObject {
      *         maximum of 4), false otherwise
      */
     private static boolean isValidFace_V_VT_VN_Line(String line) {
-        if (face_V_VT_VN_Matcher != null) {
-            face_V_VT_VN_Matcher.reset();
-        }
-
-        face_V_VT_VN_Matcher = face_V_VT_VN_Pattern.matcher(line);
-        return face_V_VT_VN_Matcher.matches();
+        return face_V_VT_VN_Pattern.matcher(line).matches();
     }
 
     /***
@@ -430,12 +409,7 @@ public class WavefrontObject {
      *         false otherwise
      */
     private static boolean isValidFace_V_VT_Line(String line) {
-        if (face_V_VT_Matcher != null) {
-            face_V_VT_Matcher.reset();
-        }
-
-        face_V_VT_Matcher = face_V_VT_Pattern.matcher(line);
-        return face_V_VT_Matcher.matches();
+        return face_V_VT_Pattern.matcher(line).matches();
     }
 
     /***
@@ -448,12 +422,7 @@ public class WavefrontObject {
      *         false otherwise
      */
     private static boolean isValidFace_V_VN_Line(String line) {
-        if (face_V_VN_Matcher != null) {
-            face_V_VN_Matcher.reset();
-        }
-
-        face_V_VN_Matcher = face_V_VN_Pattern.matcher(line);
-        return face_V_VN_Matcher.matches();
+        return face_V_VN_Pattern.matcher(line).matches();
     }
 
     /***
@@ -466,12 +435,7 @@ public class WavefrontObject {
      *         otherwise
      */
     private static boolean isValidFace_V_Line(String line) {
-        if (face_V_Matcher != null) {
-            face_V_Matcher.reset();
-        }
-
-        face_V_Matcher = face_V_Pattern.matcher(line);
-        return face_V_Matcher.matches();
+        return face_V_Pattern.matcher(line).matches();
     }
 
     /***
@@ -494,12 +458,7 @@ public class WavefrontObject {
      * @return true if the line is a valid group (or object), false otherwise
      */
     private static boolean isValidGroupObjectLine(String line) {
-        if (groupObjectMatcher != null) {
-            groupObjectMatcher.reset();
-        }
-
-        groupObjectMatcher = groupObjectPattern.matcher(line);
-        return groupObjectMatcher.matches();
+        return groupObjectPattern.matcher(line).matches();
     }
 
     public String getType() {

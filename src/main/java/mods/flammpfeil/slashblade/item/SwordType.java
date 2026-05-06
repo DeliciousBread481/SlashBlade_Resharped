@@ -2,6 +2,7 @@ package mods.flammpfeil.slashblade.item;
 
 import com.mojang.serialization.Codec;
 import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
+import mods.flammpfeil.slashblade.capability.slashblade.ISlashBladeState;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.ItemStack;
 
@@ -46,7 +47,7 @@ public enum SwordType {
             types.add(EDGEFRAGMENT);
         }
 
-        if (itemStackIn.isEnchanted()) {
+        if (itemStackIn.isEnchanted() && !state.map(ISlashBladeState::isSealed).orElse(false)) {
             types.add(ENCHANTED);
         }
 

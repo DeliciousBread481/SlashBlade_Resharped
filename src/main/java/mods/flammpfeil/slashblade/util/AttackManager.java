@@ -44,7 +44,7 @@ public class AttackManager {
         boolean result = entity.hasEffect(MobEffects.DAMAGE_BOOST) || entity.hasEffect(MobEffects.HUNGER);
         var bladeState = BladeStateAccess.of(blade);
         if (bladeState.isPresent()) {
-            var state = bladeState.orElseThrow(NullPointerException::new);
+            var state = bladeState.orElseThrow();
             var event = new SlashBladeEvent.PowerBladeEvent(blade, state, entity, result);
             NeoForge.EVENT_BUS.post(event);
             result = event.isPowered();
@@ -99,7 +99,7 @@ public class AttackManager {
             return null;
         }
         SlashBladeEvent.DoSlashEvent event = new SlashBladeEvent.DoSlashEvent(blade,
-                BladeStateAccess.of(blade).orElseThrow(NullPointerException::new),
+                BladeStateAccess.of(blade).orElseThrow(),
                 playerIn, roll, critical, comboRatio, knockback);
 
         if (NeoForge.EVENT_BUS.post(event).isCanceled()) {

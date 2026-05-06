@@ -27,7 +27,7 @@ public class CircleSlash {
             return;
         }
         SlashBladeEvent.DoSlashEvent event = new SlashBladeEvent.DoSlashEvent(blade,
-                BladeStateAccess.of(blade).orElseThrow(NullPointerException::new),
+                BladeStateAccess.of(blade).orElseThrow(),
                 living, 0, true, 0.325D, KnockBacks.cancel);
         event.setYRot(yRot);
         if (NeoForge.EVENT_BUS.post(event).isCanceled()) {
