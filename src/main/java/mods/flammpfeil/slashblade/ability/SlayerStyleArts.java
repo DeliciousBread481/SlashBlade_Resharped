@@ -4,6 +4,7 @@ import mods.flammpfeil.slashblade.SlashBlade;
 import mods.flammpfeil.slashblade.capability.mobeffect.CapabilityMobEffect;
 import mods.flammpfeil.slashblade.capability.slashblade.ISlashBladeState;
 import mods.flammpfeil.slashblade.entity.EntityAbstractSummonedSword;
+import mods.flammpfeil.slashblade.event.ability.SprintMoveEvent;
 import mods.flammpfeil.slashblade.event.handler.InputCommandEvent;
 import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.util.AdvancementHelper;
@@ -130,8 +131,13 @@ public class SlayerStyleArts {
         if (!isHandled && sender.onGround() &&
                 current.contains(InputCommand.SPRINT)
                 && current.stream().anyMatch(MOVE_COMMAND::contains)) {
-            handleSprintMove(sender, current);
 
+            SprintMoveEvent sprintEvent = new SprintMoveEvent(sender, current);
+            MinecraftForge.EVENT_BUS.post(sprintEvent);
+
+            if (!sprintEvent.isCanceled()) {
+                handleSprintMove(sender, current);
+            }
         }
     }
 
