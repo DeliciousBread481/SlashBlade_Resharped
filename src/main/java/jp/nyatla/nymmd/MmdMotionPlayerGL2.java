@@ -11,14 +11,11 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.FloatBuffer;
 import java.util.Vector;
 
 public class MmdMotionPlayerGL2 extends MmdMotionPlayer {
 
-    private class Material {
+	public class Material {
         public float[] color;// Diffuse,Specular,Ambientの順
         public float fShininess;
         public short[] indices;
@@ -186,10 +183,4 @@ public class MmdMotionPlayerGL2 extends MmdMotionPlayer {
         return;
     }
 
-    private static FloatBuffer makeFloatBuffer(int i_size) {
-        ByteBuffer bb = ByteBuffer.allocateDirect(i_size * 4);
-        bb.order(ByteOrder.nativeOrder());
-        FloatBuffer fb = bb.asFloatBuffer();
-        return fb;
-    }
 }

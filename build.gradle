@@ -138,10 +138,8 @@ dependencies {
     compileOnly           "org.projectlombok:lombok:1.18.38"
     annotationProcessor   "org.projectlombok:lombok:1.18.38"
 
-    // TODO: Update AR to 1.21.1 NeoForge version
     implementation "maven.modrinth:acceleratedrendering:1.0.8-1.21.1-alpha"
 
-    // TODO: Verify player-animation-lib NeoForge coordinates
     implementation "dev.kosmx.player-anim:player-animation-lib-forge:${project.player_anim}"
 
     compileOnly "mezz.jei:jei-${minecraft_version}-common-api:${jei_version}"
@@ -151,11 +149,6 @@ dependencies {
     compileOnly "dev.emi:emi-neoforge:${emi_version}"
     runtimeOnly "dev.emi:emi-neoforge:${emi_version}"
 
-    // TODO: Update to 1.21.1 versions
-    // runtimeOnly "curse.maven:configured-457570:5180900"
-    // runtimeOnly "curse.maven:nbtedit-reborn-678133:5984630"
-
-    // TODO: Update TF to 1.21.1 version if available
     implementation "curse.maven:the-twilight-forest-227639:7797302"
     
     implementation "maven.modrinth:patchouli:1.21.1-93-neoforge"

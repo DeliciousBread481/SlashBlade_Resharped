@@ -273,6 +273,10 @@ public interface ISlashBladeState {
 
     void setTargetEntityId(int id);
 
+    long getLastProcessedComboTick();
+
+    void setLastProcessedComboTick(long tick);
+
     @Nullable
     default Entity getTargetEntity(Level world) {
         int id = getTargetEntityId();

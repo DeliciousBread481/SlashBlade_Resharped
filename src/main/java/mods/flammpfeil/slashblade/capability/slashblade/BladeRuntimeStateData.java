@@ -11,6 +11,7 @@ import net.minecraft.resources.ResourceLocation;
 public record BladeRuntimeStateData(
     ResourceLocation comboSeq,
     long lastActionTime,
+    long lastProcessedComboTick,
     int targetEntityId,
     boolean onClick,
     float fallDecreaseRate,
@@ -19,6 +20,7 @@ public record BladeRuntimeStateData(
     public static final BladeRuntimeStateData DEFAULT = new BladeRuntimeStateData(
         ComboStateRegistry.NONE.getId(),
         0L,
+        -1L,
         -1,
         false,
         0.0F,
@@ -28,6 +30,7 @@ public record BladeRuntimeStateData(
     public static final Codec<BladeRuntimeStateData> CODEC = RecordCodecBuilder.create(instance -> instance.group(
         ResourceLocation.CODEC.fieldOf("comboSeq").forGetter(BladeRuntimeStateData::comboSeq),
         Codec.LONG.fieldOf("lastActionTime").forGetter(BladeRuntimeStateData::lastActionTime),
+        Codec.LONG.fieldOf("lastProcessedComboTick").forGetter(BladeRuntimeStateData::lastProcessedComboTick),
         Codec.INT.fieldOf("targetEntityId").forGetter(BladeRuntimeStateData::targetEntityId),
         Codec.BOOL.fieldOf("onClick").forGetter(BladeRuntimeStateData::onClick),
         Codec.FLOAT.fieldOf("fallDecreaseRate").forGetter(BladeRuntimeStateData::fallDecreaseRate),

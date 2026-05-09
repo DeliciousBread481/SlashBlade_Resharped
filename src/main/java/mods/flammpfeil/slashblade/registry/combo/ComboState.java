@@ -21,7 +21,7 @@ import net.minecraft.world.item.enchantment.Enchantments;
 import javax.annotation.Nonnull;
 import java.util.Map;
 import java.util.Objects;
-import java.util.WeakHashMap;
+import java.util.TreeMap;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -60,6 +60,8 @@ public class ComboState {
     private final boolean isAerial;
 
     private final int priority;
+
+    private final TreeMap<Integer, Float> rotationKeyframes;
 
     public ResourceLocation getMotionLoc() {
         return motionLoc;
@@ -136,6 +138,8 @@ public class ComboState {
         this.isAerial = builder.aerial;
 
         this.priority = builder.priority;
+
+        this.rotationKeyframes = new TreeMap<>(builder.rotationKeyframes);
     }
 
     public ResourceLocation getNext(LivingEntity living) {
@@ -158,6 +162,13 @@ public class ComboState {
 
     public int getPriority() {
         return priority;
+    }
+
+    public float getRotationYaw(int elapsedTick) {
+        if (rotationKeyframes.isEmpty())
+            return 0f;
+        Map.Entry<Integer, Float> entry = rotationKeyframes.floorEntry(elapsedTick);
+        return entry != null ? entry.getValue() : 0f;
     }
 
     static public SlashArts.ArtsType releaseActionQuickCharge(LivingEntity user, Integer elapsed) {
@@ -202,13 +213,6 @@ public class ComboState {
     }
 
     public static class TimeLineTickAction implements Consumer<LivingEntity> {
-        private final Map<LivingEntity, TimelineState> states = new WeakHashMap<>();
-
-        private static class TimelineState {
-            long offset = -1;
-            long lastProcessed = Long.MIN_VALUE;
-        }
-
         public static TimeLineTickActionBuilder getBuilder() {
             return new TimeLineTickActionBuilder();
         }
@@ -230,35 +234,24 @@ public class ComboState {
 
         TimeLineTickAction(Map<Integer, Consumer<LivingEntity>> timeLine) {
             this.timeLine.putAll(timeLine);
-
         }
 
         @Override
         public void accept(LivingEntity livingEntity) {
             long elapsed = getElapsed(livingEntity);
-            TimelineState state = states.computeIfAbsent(livingEntity, key -> new TimelineState());
+            int adjustElapsed = (int) elapsed;
 
-            if (state.offset < 0) {
-                state.offset = elapsed;
-            }
-            long adjustElapsed = elapsed - state.offset;
-            if (adjustElapsed < 0) {
-                state.offset = elapsed;
-                state.lastProcessed = Long.MIN_VALUE;
-                adjustElapsed = 0;
-            }
+            BladeStateAccess.of(livingEntity.getMainHandItem()).ifPresent(state -> {
+                if (state.getLastProcessedComboTick() == adjustElapsed) {
+                    return;
+                }
+                state.setLastProcessedComboTick(adjustElapsed);
 
-            if (state.lastProcessed == adjustElapsed) {
-                return;
-            }
-            state.lastProcessed = adjustElapsed;
-
-            Consumer<LivingEntity> action = timeLine.getOrDefault((int) adjustElapsed, this::defaultConsumer);
-
-            action.accept(livingEntity);
-        }
-
-        void defaultConsumer(LivingEntity entityIn) {
+                Consumer<LivingEntity> action = timeLine.get(adjustElapsed);
+                if (action != null) {
+                    action.accept(livingEntity);
+                }
+            });
         }
     }
 
@@ -285,6 +278,8 @@ public class ComboState {
         private BiConsumer<LivingEntity, LivingEntity> hitEffect;
         private Consumer<LivingEntity> clickAction;
         private BiFunction<LivingEntity, Integer, SlashArts.ArtsType> releaseAction;
+
+        private final TreeMap<Integer, Float> rotationKeyframes = new TreeMap<>();
 
         private Builder() {
             this.motionLoc = DefaultResources.ExMotionLocation;
@@ -380,6 +375,11 @@ public class ComboState {
 
         public Builder releaseAction(BiFunction<LivingEntity, Integer, SlashArts.ArtsType> clickAction) {
             this.releaseAction = clickAction;
+            return this;
+        }
+
+        public Builder rotationKeyframe(int tick, float yawDegrees) {
+            this.rotationKeyframes.put(tick, yawDegrees);
             return this;
         }
 

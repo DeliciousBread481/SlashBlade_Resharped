@@ -3,7 +3,6 @@ package mods.flammpfeil.slashblade.registry;
 import mods.flammpfeil.slashblade.SlashBlade;
 import mods.flammpfeil.slashblade.ability.StunManager;
 import mods.flammpfeil.slashblade.capability.inputstate.CapabilityInputState;
-import mods.flammpfeil.slashblade.event.client.UserPoseOverrider;
 import mods.flammpfeil.slashblade.event.handler.FallHandler;
 import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import mods.flammpfeil.slashblade.init.DefaultResources;
@@ -37,20 +36,20 @@ public class ComboStateRegistry {
     public static final DeferredHolder<ComboState, ComboState> NONE = COMBO_STATE.register("none",
             ComboState.Builder.newInstance().startAndEnd(0, 1).loop().motionLoc(DefaultResources.ExMotionLocation)
                     .next(entity -> SlashBlade.prefix("none")).nextOfTimeout(entity -> SlashBlade.prefix("none"))
-                    .addTickAction(UserPoseOverrider::resetRot)::build);
+                    ::build);
 
     public static final DeferredHolder<ComboState, ComboState> STANDBY = COMBO_STATE.register("standby",
             ComboState.Builder.newInstance().startAndEnd(0, 1).loop().timeout(1000)
                     .motionLoc(DefaultResources.ExMotionLocation).next(ComboCommands::initStandByCommand)
                     .nextOfTimeout(entity -> SlashBlade.prefix("none"))
-                    .addTickAction(UserPoseOverrider::resetRot)::build);
+                    ::build);
 
     public static final DeferredHolder<ComboState, ComboState> COMBO_A1 = COMBO_STATE.register("combo_a1", ComboState.Builder
             .newInstance().startAndEnd(1, 10).priority(100).motionLoc(DefaultResources.ExMotionLocation)
             .next(ComboState.TimeoutNext.buildFromFrame(5, entity -> SlashBlade.prefix("combo_a2")))
             .nextOfTimeout(entity -> SlashBlade.prefix("combo_a1_end"))
             .clickAction(entity -> AttackManager.doSlash(entity, -10, true, false, 0.44f))
-            .addTickAction(UserPoseOverrider::resetRot).addHitEffect(StunManager::setStun)::build);
+            .addHitEffect(StunManager::setStun)::build);
 
     public static final DeferredHolder<ComboState, ComboState> COMBO_A1_END = COMBO_STATE.register("combo_a1_end",
             ComboState.Builder.newInstance().startAndEnd(10, 21).priority(100)
@@ -136,15 +135,14 @@ public class ComboStateRegistry {
                     .addTickAction(ComboState.TimeLineTickAction.getBuilder()
                             .put(8, (entityIn) -> AttackManager.doSlash(entityIn, 45, false, false, 0.44f))
                             .put(9, (entityIn) -> AttackManager.doSlash(entityIn, 50, true, false, 0.44f)).build())
-                    .addTickAction(ComboState.TimeLineTickAction.getBuilder()
-                            .put(8, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(8 + 1, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(8 + 2, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(8 + 3, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(8 + 4, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(8 + 5, UserPoseOverrider::resetRot).build())
                     .clickAction(a -> AdvancementHelper.grantCriterion(a, AdvancementHelper.ADVANCEMENT_COMBO_A))
-                    .addHitEffect(StunManager::setStun)::build);
+                    .addHitEffect(StunManager::setStun)
+                    .rotationKeyframe(8, 72)
+                    .rotationKeyframe(9, 144)
+                    .rotationKeyframe(10, 216)
+                    .rotationKeyframe(11, 288)
+                    .rotationKeyframe(12, 360)
+                    .rotationKeyframe(13, 0)::build);
     public static final DeferredHolder<ComboState, ComboState> COMBO_A4_END = COMBO_STATE.register("combo_a4_end",
             ComboState.Builder.newInstance().startAndEnd(576, 608).priority(100)
                     .motionLoc(DefaultResources.ExMotionLocation).next(entity -> SlashBlade.prefix("none"))
@@ -184,15 +182,14 @@ public class ComboStateRegistry {
                             .put(15, (entityIn) -> AttackManager.doSlash(entityIn, 35, false, true, 1f))
                             .put(17, (entityIn) -> AttackManager.doSlash(entityIn, 40, true, true, 1f))
                             .put(19, (entityIn) -> AttackManager.doSlash(entityIn, 30, true, true, 1f)).build())
-                    .addTickAction(ComboState.TimeLineTickAction.getBuilder()
-                            .put(13, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(13 + 1, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(13 + 2, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(13 + 3, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(13 + 4, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(13 + 5, UserPoseOverrider::resetRot).build())
                     .clickAction(a -> AdvancementHelper.grantCriterion(a, AdvancementHelper.ADVANCEMENT_COMBO_A_EX))
-                    .addHitEffect(StunManager::setStun)::build);
+                    .addHitEffect(StunManager::setStun)
+                    .rotationKeyframe(13, 72)
+                    .rotationKeyframe(14, 144)
+                    .rotationKeyframe(15, 216)
+                    .rotationKeyframe(16, 288)
+                    .rotationKeyframe(17, 360)
+                    .rotationKeyframe(18, 0)::build);
     public static final DeferredHolder<ComboState, ComboState> COMBO_A5_END = COMBO_STATE.register("combo_a5ex_end",
             ComboState.Builder.newInstance().startAndEnd(1013, 1061).priority(100)
                     .motionLoc(DefaultResources.ExMotionLocation).next(entity -> SlashBlade.prefix("none"))
@@ -255,14 +252,13 @@ public class ComboStateRegistry {
                             .put(13 - 3, (entityIn) -> AttackManager.doSlash(entityIn, 5,
                                     new Vec3(entityIn.getRandom().nextFloat() - 0.5f, 0.8f, 0), true, false, 1f))
                             .build())
-                    .addTickAction(ComboState.TimeLineTickAction.getBuilder()
-                            .put(12 - 3, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(12 - 3 + 1, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(12 - 3 + 2, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(12 - 3 + 3, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(12 - 3 + 4, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(12 - 3 + 5, UserPoseOverrider::resetRot).build())
-                    .addHitEffect(StunManager::setStun)::build);
+                    .addHitEffect(StunManager::setStun)
+                    .rotationKeyframe(9, 72)
+                    .rotationKeyframe(10, 144)
+                    .rotationKeyframe(11, 216)
+                    .rotationKeyframe(12, 288)
+                    .rotationKeyframe(13, 360)
+                    .rotationKeyframe(14, 0)::build);
     public static final DeferredHolder<ComboState, ComboState> COMBO_B1_END2 = COMBO_STATE.register("combo_b1_end2",
             ComboState.Builder.newInstance().startAndEnd(743, 764).priority(100)
                     .next(entity -> SlashBlade.prefix("none"))
@@ -409,14 +405,13 @@ public class ComboStateRegistry {
                     .put(13, (entityIn) -> AttackManager.doSlash(entityIn, 5,
                             new Vec3(entityIn.getRandom().nextFloat() - 0.5f, 0.8f, 0), true, false, 0.244f))
                     .build())
-            .addTickAction(ComboState.TimeLineTickAction.getBuilder()
-                    .put(12, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                    .put(12 + 1, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                    .put(12 + 2, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                    .put(12 + 3, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                    .put(12 + 4, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                    .put(12 + 5, UserPoseOverrider::resetRot).build())
             .addHitEffect(StunManager::setStun)
+            .rotationKeyframe(12, 72)
+            .rotationKeyframe(13, 144)
+            .rotationKeyframe(14, 216)
+            .rotationKeyframe(15, 288)
+            .rotationKeyframe(16, 360)
+            .rotationKeyframe(17, 0)
             .clickAction(a -> AdvancementHelper.grantCriterion(a, AdvancementHelper.ADVANCEMENT_COMBO_B_MAX))::build);
     public static final DeferredHolder<ComboState, ComboState> COMBO_B7_END3 = COMBO_STATE.register("combo_b7_end",
             ComboState.Builder.newInstance().startAndEnd(764, 787).priority(100)
@@ -434,14 +429,13 @@ public class ComboStateRegistry {
                             .put(13 - 3, (entityIn) -> AttackManager.doSlash(entityIn, 5,
                                     new Vec3(entityIn.getRandom().nextFloat() - 0.5f, 0.8f, 0), true, false, 0.244f))
                             .build())
-                    .addTickAction(ComboState.TimeLineTickAction.getBuilder()
-                            .put(12 - 3, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(12 - 3 + 1, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(12 - 3 + 2, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(12 - 3 + 3, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(12 - 3 + 4, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(12 - 3 + 5, UserPoseOverrider::resetRot).build())
-                    .addHitEffect(StunManager::setStun)::build);
+                    .addHitEffect(StunManager::setStun)
+                    .rotationKeyframe(9, 72)
+                    .rotationKeyframe(10, 144)
+                    .rotationKeyframe(11, 216)
+                    .rotationKeyframe(12, 288)
+                    .rotationKeyframe(13, 360)
+                    .rotationKeyframe(14, 0)::build);
     public static final DeferredHolder<ComboState, ComboState> COMBO_B_END2 = COMBO_STATE.register("combo_b_end2",
             ComboState.Builder.newInstance().startAndEnd(743, 764).priority(100)
                     .next(entity -> SlashBlade.prefix("none"))
@@ -462,7 +456,7 @@ public class ComboStateRegistry {
                                     (entityIn) -> AttackManager.doSlash(entityIn, -20, false, false, 0.28f))
                             .build().andThen(FallHandler::fallDecrease))
                     .addHitEffect(StunManager::setStun)
-                    .addTickAction(UserPoseOverrider::resetRot)::build);
+                    ::build);
     public static final DeferredHolder<ComboState, ComboState> AERIAL_RAVE_A1_END = COMBO_STATE.register("aerial_rave_a1_end",
             ComboState.Builder.newInstance().startAndEnd(1122, 1132).priority(80)
                     .next(entity -> SlashBlade.prefix("none")).nextOfTimeout(entity -> SlashBlade.prefix("none"))
@@ -506,7 +500,7 @@ public class ComboStateRegistry {
                                             KnockBacks.smash))
                             .build())
                     .addTickAction(FallHandler::fallDecrease).addHitEffect(StunManager::setStun)
-                    .addTickAction(UserPoseOverrider::resetRot).clickAction(
+                    .clickAction(
                             a -> AdvancementHelper.grantCriterion(a, AdvancementHelper.ADVANCEMENT_AERIAL_A))::build);
     public static final DeferredHolder<ComboState, ComboState> AERIAL_RAVE_A3_END = COMBO_STATE.register("aerial_rave_a3_end",
             ComboState.Builder.newInstance().startAndEnd(1328, 1338).priority(80)
@@ -531,16 +525,15 @@ public class ComboStateRegistry {
                                     (entityIn) -> AttackManager.doSlash(entityIn, 180 + 57, Vec3.ZERO, false, false,
                                             0.34f, KnockBacks.toss))
                             .build())
-                    .addTickAction(ComboState.TimeLineTickAction.getBuilder()
-                            .put(0, (entityIn) -> UserPoseOverrider.setRot(entityIn, -90, true))
-                            .put(1, (entityIn) -> UserPoseOverrider.setRot(entityIn, -90, true))
-                            .put(2, (entityIn) -> UserPoseOverrider.setRot(entityIn, -90, true))
-                            .put(3, (entityIn) -> UserPoseOverrider.setRot(entityIn, -90, true))
-                            .put(4, (entityIn) -> UserPoseOverrider.setRot(entityIn, -120, true))
-                            .put(5, (entityIn) -> UserPoseOverrider.setRot(entityIn, -120, true))
-                            .put(6, (entityIn) -> UserPoseOverrider.setRot(entityIn, -120, true))
-                            .put(7, UserPoseOverrider::resetRot).build())
-                    .addTickAction(FallHandler::fallDecrease).addHitEffect(StunManager::setStun)::build);
+                    .addTickAction(FallHandler::fallDecrease).addHitEffect(StunManager::setStun)
+                    .rotationKeyframe(0, -90)
+                    .rotationKeyframe(1, -180)
+                    .rotationKeyframe(2, -270)
+                    .rotationKeyframe(3, -360)
+                    .rotationKeyframe(4, -480)
+                    .rotationKeyframe(5, -600)
+                    .rotationKeyframe(6, -720)
+                    .rotationKeyframe(7, 0)::build);
     public static final DeferredHolder<ComboState, ComboState> AERIAL_RAVE_B3_END = COMBO_STATE.register("aerial_rave_b3_end",
             ComboState.Builder.newInstance().startAndEnd(1437, 1443).priority(80)
                     .next(entity -> SlashBlade.prefix("none")).nextOfTimeout(entity -> SlashBlade.prefix("none"))
@@ -561,14 +554,13 @@ public class ComboStateRegistry {
                                     (entityIn) -> AttackManager.doSlash(entityIn, 50, Vec3.ZERO, true, true, 0.34f,
                                             KnockBacks.meteor))
                             .build())
-                    .addTickAction(ComboState.TimeLineTickAction.getBuilder()
-                            .put(5, (entityIn) -> UserPoseOverrider.setRot(entityIn, 90, true))
-                            .put(5 + 1, (entityIn) -> UserPoseOverrider.setRot(entityIn, 90, true))
-                            .put(5 + 2, (entityIn) -> UserPoseOverrider.setRot(entityIn, 90, true))
-                            .put(5 + 3, (entityIn) -> UserPoseOverrider.setRot(entityIn, 90, true))
-                            .put(5 + 4, UserPoseOverrider::resetRot).build())
                     .addTickAction(FallHandler::fallDecrease).addHitEffect(StunManager::setStun).clickAction(
-                            a -> AdvancementHelper.grantCriterion(a, AdvancementHelper.ADVANCEMENT_AERIAL_B))::build);
+                            a -> AdvancementHelper.grantCriterion(a, AdvancementHelper.ADVANCEMENT_AERIAL_B))
+                    .rotationKeyframe(5, 90)
+                    .rotationKeyframe(6, 180)
+                    .rotationKeyframe(7, 270)
+                    .rotationKeyframe(8, 360)
+                    .rotationKeyframe(9, 0)::build);
     public static final DeferredHolder<ComboState, ComboState> AERIAL_RAVE_B4_END = COMBO_STATE.register("aerial_rave_b4_end",
             ComboState.Builder.newInstance().startAndEnd(1537, 1547).priority(80)
                     .next(entity -> SlashBlade.prefix("none")).nextOfTimeout(entity -> SlashBlade.prefix("none"))
@@ -621,12 +613,6 @@ public class ComboStateRegistry {
             ComboState.Builder.newInstance().startAndEnd(1700, 1713).priority(90).aerial()
                     .next(ComboState.TimeoutNext.buildFromFrame(7, entity -> SlashBlade.prefix("none")))
                     .nextOfTimeout(entity -> SlashBlade.prefix("upperslash_jump_end"))
-                    .addTickAction(ComboState.TimeLineTickAction.getBuilder()
-                            .put(0, (entityIn) -> UserPoseOverrider.setRot(entityIn, 90, true))
-                            .put(1, (entityIn) -> UserPoseOverrider.setRot(entityIn, 90, true))
-                            .put(2, (entityIn) -> UserPoseOverrider.setRot(entityIn, 90, true))
-                            .put(3, (entityIn) -> UserPoseOverrider.setRot(entityIn, 90, true))
-                            .put(4, UserPoseOverrider::resetRot).build())
                     .addTickAction(FallHandler::fallDecrease).addHitEffect(StunManager::setStun)
                     .clickAction((entityIn) -> {
                         Vec3 motion = entityIn.getDeltaMovement();
@@ -634,7 +620,12 @@ public class ComboStateRegistry {
 
                         entityIn.setOnGround(false);
                         entityIn.hasImpulse = true;
-                    })::build);
+                    })
+                    .rotationKeyframe(0, 90)
+                    .rotationKeyframe(1, 180)
+                    .rotationKeyframe(2, 270)
+                    .rotationKeyframe(3, 360)
+                    .rotationKeyframe(4, 0)::build);
     public static final DeferredHolder<ComboState, ComboState> UPPERSLASH_JUMP_END = COMBO_STATE.register("upperslash_jump_end",
             ComboState.Builder.newInstance().startAndEnd(1713, 1717).priority(90)
                     .next(entity -> SlashBlade.prefix("none")).nextOfTimeout(entity -> SlashBlade.prefix("none"))
@@ -686,12 +677,11 @@ public class ComboStateRegistry {
                             });
                         }
                     })
-                    .addTickAction(ComboState.TimeLineTickAction.getBuilder()
-                            .put(0, (entityIn) -> UserPoseOverrider.setRot(entityIn, 90, true))
-                            .put(1, (entityIn) -> UserPoseOverrider.setRot(entityIn, 90, true))
-                            .put(2, (entityIn) -> UserPoseOverrider.setRot(entityIn, 90, true))
-                            .put(3, (entityIn) -> UserPoseOverrider.setRot(entityIn, 90, true))
-                            .put(4, UserPoseOverrider::resetRot).build())::build);
+                    .rotationKeyframe(0, 90)
+                    .rotationKeyframe(1, 180)
+                    .rotationKeyframe(2, 270)
+                    .rotationKeyframe(3, 360)
+                    .rotationKeyframe(4, 0)::build);
     public static final DeferredHolder<ComboState, ComboState> AERIAL_CLEAVE_LOOP = COMBO_STATE.register("aerial_cleave_loop",
             ComboState.Builder.newInstance().startAndEnd(1812, 1817).priority(70).loop().timeout(1000)
                     .next(entity -> SlashBlade.prefix("aerial_cleave_loop"))
@@ -714,7 +704,8 @@ public class ComboStateRegistry {
                                 FallHandler.spawnLandingParticle(e, 20);
                             });
                         }
-                    }).addHitEffect((t, a) -> StunManager.setStun(t, 15))::build);
+                    }).addHitEffect((t, a) -> StunManager.setStun(t, 15))
+                    .rotationKeyframe(0, 360)::build);
 
     public static final DeferredHolder<ComboState, ComboState> AERIAL_CLEAVE_LANDING = COMBO_STATE.register("aerial_cleave_landing",
             ComboState.Builder.newInstance().startAndEnd(1816, 1859).priority(70)
@@ -722,14 +713,13 @@ public class ComboStateRegistry {
                     .nextOfTimeout(entity -> SlashBlade.prefix("aerial_cleave_end"))
                     .clickAction((entityIn) -> AttackManager.doSlash(entityIn, 60, Vec3.ZERO, false, false, 0.44f,
                             KnockBacks.meteor))
-                    .addTickAction(UserPoseOverrider::resetRot)::build);
+                    ::build);
 
     public static final DeferredHolder<ComboState, ComboState> AERIAL_CLEAVE_END = COMBO_STATE.register("aerial_cleave_end",
             ComboState.Builder.newInstance().startAndEnd(1859, 1886).priority(70)
                     .next(entity -> SlashBlade.prefix("none")).nextOfTimeout(entity -> SlashBlade.prefix("none"))
                     .addTickAction(ComboState.TimeLineTickAction.getBuilder()
                             .put(0, AttackManager::playQuickSheathSoundAction).build())
-                    .addTickAction(UserPoseOverrider::resetRot)
                     .releaseAction(ComboState::releaseActionQuickCharge)::build);
 
     public static final DeferredHolder<ComboState, ComboState> RAPID_SLASH = COMBO_STATE.register("rapid_slash",
@@ -804,20 +794,17 @@ public class ComboStateRegistry {
                         if (elapsed == 7) {
                             AttackManager.doSlash(e, -30, AttackManager.genRushOffset(e), false, true, 0.44f);
                         }
-
-                        if (7 <= elapsed && elapsed <= 10) {
-                            UserPoseOverrider.setRot(e, 90, true);
-                        }
-                        if (10 < elapsed) {
-                            UserPoseOverrider.setRot(e, 0, false);
-                        }
-                    }).addHitEffect(StunManager::setStun)::build);
+                    }).addHitEffect(StunManager::setStun)
+                    .rotationKeyframe(7, 90)
+                    .rotationKeyframe(8, 180)
+                    .rotationKeyframe(9, 270)
+                    .rotationKeyframe(10, 360)
+                    .rotationKeyframe(11, 0)::build);
 
     public static final DeferredHolder<ComboState, ComboState> RAPID_SLASH_QUICK = COMBO_STATE.register("rapid_slash_quick",
             ComboState.Builder.newInstance().startAndEnd(2000, 2001).priority(70)
                     .next(entity -> SlashBlade.prefix("rapid_slash_quick"))
                     .nextOfTimeout(entity -> SlashBlade.prefix("rapid_slash"))
-                    .addTickAction(UserPoseOverrider::resetRot)
                     .addTickAction(ComboState.TimeLineTickAction.getBuilder()
                             .put(0, AttackManager::playQuickSheathSoundAction).build())
                     .releaseAction(ComboState::releaseActionQuickCharge)::build);
@@ -848,18 +835,6 @@ public class ComboStateRegistry {
                                     (entityIn) -> AttackManager.doSlash(entityIn, -57, Vec3.ZERO, false, false, 0.6f,
                                             KnockBacks.toss))
                             .build())
-                    .addTickAction(ComboState.TimeLineTickAction.getBuilder()
-                            .put(0, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(1, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(2, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(3, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(4, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(5, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(5 + 1, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(5 + 2, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(5 + 3, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(5 + 4, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(5 + 5, UserPoseOverrider::resetRot).build())
                     .addTickAction((entityIn) -> {
 
                         long elapsed = ComboState.getElapsed(entityIn);
@@ -877,7 +852,18 @@ public class ComboStateRegistry {
 
                             entityIn.setDeltaMovement(0, yMotion, 0);
                         }
-                    }).addTickAction(FallHandler::fallDecrease).addHitEffect(StunManager::setStun)::build);
+                    }).addTickAction(FallHandler::fallDecrease).addHitEffect(StunManager::setStun)
+                    .rotationKeyframe(0, 72)
+                    .rotationKeyframe(1, 144)
+                    .rotationKeyframe(2, 216)
+                    .rotationKeyframe(3, 288)
+                    .rotationKeyframe(4, 360)
+                    .rotationKeyframe(5, 432)
+                    .rotationKeyframe(6, 504)
+                    .rotationKeyframe(7, 576)
+                    .rotationKeyframe(8, 648)
+                    .rotationKeyframe(9, 720)
+                    .rotationKeyframe(10, 0)::build);
 
     public static final DeferredHolder<ComboState, ComboState> RISING_STAR_END = COMBO_STATE.register("rising_star_end",
             ComboState.Builder.newInstance().startAndEnd(2137, 2147).priority(70)
@@ -954,7 +940,7 @@ public class ComboStateRegistry {
                         }
                         e.setDeltaMovement(e.getDeltaMovement().multiply(0, 1, 0));
                     }).addTickAction(FallHandler::fallDecrease)
-                    .addTickAction(UserPoseOverrider::resetRot)::build);
+                    ::build);
 
     public static final DeferredHolder<ComboState, ComboState> JUDGEMENT_CUT_SLASH = COMBO_STATE.register("judgement_cut_slash",
             ComboState.Builder.newInstance().startAndEnd(1923, 1928).speed(0.4F).priority(50)
@@ -983,7 +969,6 @@ public class ComboStateRegistry {
                                     a -> AdvancementHelper.grantCriterion(a, AdvancementHelper.ADVANCEMENT_JUDGEMENT_CUT))
                             .build())
                     .addTickAction(FallHandler::fallResist)
-                    .addTickAction(UserPoseOverrider::resetRot)
                     .addHitEffect(StunManager::setStun)::build);
 
     public static final DeferredHolder<ComboState, ComboState> JUDGEMENT_CUT_SHEATH_AIR = COMBO_STATE.register(
@@ -1005,7 +990,6 @@ public class ComboStateRegistry {
                     .addTickAction(ComboState.TimeLineTickAction.getBuilder().put(1,
                                     a -> AdvancementHelper.grantCriterion(a, AdvancementHelper.ADVANCEMENT_JUDGEMENT_CUT_JUST))
                             .build())
-                    .addTickAction(UserPoseOverrider::resetRot)
                     .addTickAction(FallHandler::fallResist).addHitEffect(StunManager::setStun)::build);
 
     public static final DeferredHolder<ComboState, ComboState> JUDGEMENT_CUT_SLASH_JUST2 = COMBO_STATE.register(
@@ -1013,7 +997,6 @@ public class ComboStateRegistry {
             ComboState.Builder.newInstance().startAndEnd(1923, 1928).speed(0.75F).priority(50)
                     .next(entity -> SlashBlade.prefix("judgement_cut_slash_just2"))
                     .nextOfTimeout(entity -> SlashBlade.prefix("judgement_cut_slash_just_sheath"))
-                    .addTickAction(UserPoseOverrider::resetRot)
                     .addTickAction(FallHandler::fallResist)::build);
 
     public static final DeferredHolder<ComboState, ComboState> JUDGEMENT_CUT_SHEATH_JUST = COMBO_STATE.register(
@@ -1021,7 +1004,6 @@ public class ComboStateRegistry {
             ComboState.Builder.newInstance().startAndEnd(1928, 1963).priority(50)
                     .next(entity -> SlashBlade.prefix("none")).nextOfTimeout(entity -> SlashBlade.prefix("none"))
                     .addTickAction(FallHandler::fallDecrease)
-                    .addTickAction(UserPoseOverrider::resetRot)
                     .addTickAction(ComboState.TimeLineTickAction.getBuilder()
                             .put(0, AttackManager::playQuickSheathSoundAction).build())
                     .releaseAction(ComboState::releaseActionQuickCharge)::build);
@@ -1032,32 +1014,30 @@ public class ComboStateRegistry {
             .nextOfTimeout(entity -> SlashBlade.prefix("void_slash_sheath"))
             .addTickAction(entity -> entity.setDeltaMovement(Vec3.ZERO))
             .addTickAction(ComboState.TimeLineTickAction.getBuilder().put(16, AttackManager::doVoidSlashAttack).build())
-            .addTickAction(ComboState.TimeLineTickAction.getBuilder()
-                    .put(16, (entityIn) -> UserPoseOverrider.setRot(entityIn, -36, true))
-                    .put(16 + 1, (entityIn) -> UserPoseOverrider.setRot(entityIn, -36, true))
-                    .put(16 + 2, (entityIn) -> UserPoseOverrider.setRot(entityIn, -36, true))
-                    .put(16 + 3, (entityIn) -> UserPoseOverrider.setRot(entityIn, -36, true))
-                    .put(16 + 4, (entityIn) -> UserPoseOverrider.setRot(entityIn, -36, true))
-                    .put(16 + 5, (entityIn) -> UserPoseOverrider.setRot(entityIn, 0, true))
-                    .put(57, (entityIn) -> UserPoseOverrider.setRot(entityIn, 18, true))
-                    .put(57 + 1, (entityIn) -> UserPoseOverrider.setRot(entityIn, 18, true))
-                    .put(57 + 2, (entityIn) -> UserPoseOverrider.setRot(entityIn, 18, true))
-                    .put(57 + 3, (entityIn) -> UserPoseOverrider.setRot(entityIn, 18, true))
-                    .put(57 + 4, (entityIn) -> UserPoseOverrider.setRot(entityIn, 18, true))
-                    .put(57 + 5, (entityIn) -> UserPoseOverrider.setRot(entityIn, 18, true))
-                    .put(57 + 6, (entityIn) -> UserPoseOverrider.setRot(entityIn, 18, true))
-                    .put(57 + 7, (entityIn) -> UserPoseOverrider.setRot(entityIn, 18, true))
-                    .put(57 + 8, (entityIn) -> UserPoseOverrider.setRot(entityIn, 18, true))
-                    .put(57 + 9, (entityIn) -> UserPoseOverrider.setRot(entityIn, 18, true))
-                    .put(57 + 10, (entityIn) -> UserPoseOverrider.setRot(entityIn, 0, true)).build())
             .addTickAction(FallHandler::fallDecrease)
-            .addHitEffect((t, a) -> StunManager.setStun(t, 40))::build);
+            .addHitEffect((t, a) -> StunManager.setStun(t, 40))
+            .rotationKeyframe(16, -36)
+            .rotationKeyframe(17, -72)
+            .rotationKeyframe(18, -108)
+            .rotationKeyframe(19, -144)
+            .rotationKeyframe(20, -180)
+            .rotationKeyframe(21, -180)
+            .rotationKeyframe(57, -162)
+            .rotationKeyframe(58, -144)
+            .rotationKeyframe(59, -126)
+            .rotationKeyframe(60, -108)
+            .rotationKeyframe(61, -90)
+            .rotationKeyframe(62, -72)
+            .rotationKeyframe(63, -54)
+            .rotationKeyframe(64, -36)
+            .rotationKeyframe(65, -18)
+            .rotationKeyframe(66, 0)
+            .rotationKeyframe(67, 0)::build);
 
     public static final DeferredHolder<ComboState, ComboState> VOID_SLASH_SHEATH = COMBO_STATE.register("void_slash_sheath",
             ComboState.Builder.newInstance().startAndEnd(2278, 2299).priority(50)
                     .next(entity -> SlashBlade.prefix("none")).nextOfTimeout(entity -> SlashBlade.prefix("none"))
                     .addTickAction(FallHandler::fallDecrease)
-                    .addTickAction(UserPoseOverrider::resetRot)
                     .addTickAction(ComboState.TimeLineTickAction.getBuilder()
                             .put(0, AttackManager::playQuickSheathSoundAction).build())
                     .releaseAction(ComboState::releaseActionQuickCharge)::build);
@@ -1067,7 +1047,6 @@ public class ComboStateRegistry {
                     .next((entity) -> SlashBlade.prefix("sakura_end_right"))
                     .nextOfTimeout(entity -> SlashBlade.prefix("sakura_end_right"))
                     .clickAction((entityIn) -> SakuraEnd.doSlash(entityIn, 22.5F, Vec3.ZERO, false, false, 0.5))
-                    .addTickAction(UserPoseOverrider::resetRot)
                     .addHitEffect(StunManager::setStun)::build);
 
     public static final DeferredHolder<ComboState, ComboState> SAKURA_END_RIGHT = COMBO_STATE.register("sakura_end_right",
@@ -1075,7 +1054,6 @@ public class ComboStateRegistry {
                     .next((entity) -> SlashBlade.prefix("none"))
                     .nextOfTimeout(entity -> SlashBlade.prefix("sakura_end_finish"))
                     .clickAction((entityIn) -> SakuraEnd.doSlash(entityIn, 180F - 22.5F, Vec3.ZERO, false, true, 0.76))
-                    .addTickAction(UserPoseOverrider::resetRot)
                     .addHitEffect((t, a) -> StunManager.setStun(t, 36))::build);
 
     public static final DeferredHolder<ComboState, ComboState> SAKURA_END_FINISH = COMBO_STATE.register("sakura_end_finish",
@@ -1094,7 +1072,6 @@ public class ComboStateRegistry {
                     .next((entity) -> SlashBlade.prefix("sakura_end_right_air"))
                     .nextOfTimeout(entity -> SlashBlade.prefix("sakura_end_right_air"))
                     .clickAction((entityIn) -> SakuraEnd.doSlash(entityIn, 22.5F, Vec3.ZERO, false, false, 0.5))
-                    .addTickAction(UserPoseOverrider::resetRot)
                     .addTickAction(FallHandler::fallDecrease).addHitEffect(StunManager::setStun).aerial()::build);
 
     public static final DeferredHolder<ComboState, ComboState> SAKURA_END_RIGHT_AIR = COMBO_STATE.register("sakura_end_right_air",
@@ -1102,7 +1079,6 @@ public class ComboStateRegistry {
                     .next((entity) -> SlashBlade.prefix("none"))
                     .nextOfTimeout(entity -> SlashBlade.prefix("sakura_end_finish_air"))
                     .clickAction((entityIn) -> SakuraEnd.doSlash(entityIn, 180F - 22.5F, Vec3.ZERO, false, true, 0.76))
-                    .addTickAction(UserPoseOverrider::resetRot)
                     .addTickAction(FallHandler::fallDecrease).addHitEffect(StunManager::setStun).aerial()::build);
 
     public static final DeferredHolder<ComboState, ComboState> SAKURA_END_FINISH_AIR = COMBO_STATE.register("sakura_end_finish_air",
@@ -1129,14 +1105,13 @@ public class ComboStateRegistry {
                             .put(5, (entityIn) -> CircleSlash.doCircleSlashAttack(entityIn, 90))
                             .put(6, (entityIn) -> CircleSlash.doCircleSlashAttack(entityIn, 0))
                             .put(7, (entityIn) -> CircleSlash.doCircleSlashAttack(entityIn, -90)).build())
-                    .addTickAction(ComboState.TimeLineTickAction.getBuilder()
-                            .put(7 - 3, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(7 - 3 + 1, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(7 - 3 + 2, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(7 - 3 + 3, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(7 - 3 + 4, (entityIn) -> UserPoseOverrider.setRot(entityIn, 72, true))
-                            .put(7 - 3 + 5, UserPoseOverrider::resetRot).build())
-                    .addHitEffect(StunManager::setStun)::build);
+                    .addHitEffect(StunManager::setStun)
+                    .rotationKeyframe(4, 72)
+                    .rotationKeyframe(5, 144)
+                    .rotationKeyframe(6, 216)
+                    .rotationKeyframe(7, 288)
+                    .rotationKeyframe(8, 360)
+                    .rotationKeyframe(9, 0)::build);
     public static final DeferredHolder<ComboState, ComboState> CIRCLE_SLASH_END = COMBO_STATE.register("circle_slash_end",
             ComboState.Builder.newInstance().startAndEnd(743, 764).priority(100)
                     .next(entity -> SlashBlade.prefix("none"))
@@ -1222,7 +1197,6 @@ public class ComboStateRegistry {
             .newInstance().startAndEnd(1, 33).priority(50).motionLoc(DefaultResources.testLocation)
             .next(entity -> SlashBlade.prefix("piercing"))
             .nextOfTimeout(entity -> SlashBlade.prefix("piercing_2"))
-            .addTickAction(UserPoseOverrider::resetRot)
             ::build);
 
     public static final DeferredHolder<ComboState, ComboState> PIERCING_2 = COMBO_STATE.register("piercing_2", ComboState.Builder
@@ -1241,7 +1215,6 @@ public class ComboStateRegistry {
                     AttackManager.playPiercingSoundAction(entity);
                 }
             })
-            .addTickAction(UserPoseOverrider::resetRot)
             .addHitEffect(StunManager::setStun)::build);
 
     public static final DeferredHolder<ComboState, ComboState> PIERCING_JUST = COMBO_STATE.register("piercing_just", ComboState.Builder
@@ -1260,7 +1233,6 @@ public class ComboStateRegistry {
                     AttackManager.playPiercingSoundAction(entity);
                 }
             })
-            .addTickAction(UserPoseOverrider::resetRot)
             .addHitEffect(StunManager::setStun)::build);
 
     public static final DeferredHolder<ComboState, ComboState> PIERCING_END = COMBO_STATE.register("piercing_end",

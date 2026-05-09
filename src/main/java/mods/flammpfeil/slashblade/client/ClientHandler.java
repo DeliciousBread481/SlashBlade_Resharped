@@ -28,6 +28,7 @@ import net.minecraft.world.item.Item;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
@@ -48,7 +49,7 @@ public class ClientHandler {
         SneakingMotionCanceller.getInstance().register();
         BladeRuntimeSyncer.getInstance().register();
 
-        if (isClassAvailable("dev.kosmx.playerAnim.api.layered.AnimationStack")) {
+        if (ModList.get().isLoaded("playeranimator")) {
             PlayerAnimationOverrider.getInstance().register();
         } else {
             UserPoseOverrider.getInstance().register();
@@ -179,15 +180,5 @@ public class ClientHandler {
             livingRenderer.addLayer(new LayerMainBlade<>(livingRenderer));
         }
     }
-
-    private static boolean isClassAvailable(String className) {
-        try {
-            Class.forName(className);
-            return true;
-        } catch (ClassNotFoundException e) {
-            return false;
-        }
-    }
-
 
 }

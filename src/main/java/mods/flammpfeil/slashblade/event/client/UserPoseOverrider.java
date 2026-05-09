@@ -2,10 +2,11 @@ package mods.flammpfeil.slashblade.event.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import mods.flammpfeil.slashblade.item.ItemSlashBlade;
-import net.minecraft.nbt.CompoundTag;
+import mods.flammpfeil.slashblade.registry.ComboStateRegistry;
+import mods.flammpfeil.slashblade.registry.combo.ComboState;
 import net.minecraft.util.Mth;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
@@ -14,8 +15,6 @@ import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.bus.api.SubscribeEvent;
 
 public class UserPoseOverrider {
-
-	public static boolean UsePoseOverrider = false;
 
     private static final class SingletonHolder {
         private static final UserPoseOverrider instance = new UserPoseOverrider();
@@ -30,11 +29,7 @@ public class UserPoseOverrider {
 
     public void register() {
         NeoForge.EVENT_BUS.register(this);
-        UsePoseOverrider = true;
     }
-
-    private static final String TAG_ROT = "sb_yrot";
-    private static final String TAG_ROT_PREV = "sb_yrot_prev";
 
     @SubscribeEvent
     public void onRenderPlayerEventPre(RenderLivingEvent.Pre<?, ?> event) {
@@ -47,21 +42,37 @@ public class UserPoseOverrider {
             return;
         }
 
-        float rot = event.getEntity().getPersistentData().getFloat(TAG_ROT);
-        float rotPrev = event.getEntity().getPersistentData().getFloat(TAG_ROT_PREV);
-
-        PoseStack matrixStackIn = event.getPoseStack();
-        LivingEntity entityLiving = event.getEntity();
+        PoseStack poseStack = event.getPoseStack();
+        LivingEntity entity = event.getEntity();
         float partialTicks = event.getPartialTick();
 
-        float f = Mth.rotLerp(partialTicks, entityLiving.yBodyRotO, entityLiving.yBodyRot);
-        matrixStackIn.mulPose(Axis.YP.rotationDegrees(180.0F - f));
-        anotherPoseRotP(matrixStackIn, entityLiving, partialTicks);
+        float prevRot = getComboRotation(entity, -1);
+        float currRot = getComboRotation(entity, 0);
 
-        matrixStackIn.mulPose(Axis.YP.rotationDegrees(Mth.rotLerp(partialTicks, rot, rotPrev)));
+        boolean hasSwimFly = entity.isFallFlying() || entity.getSwimAmount(partialTicks) > 0f;
+        if (prevRot == 0f && currRot == 0f && !hasSwimFly) {
+            return;
+        }
 
-        anotherPoseRotN(matrixStackIn, entityLiving, partialTicks);
-        matrixStackIn.mulPose(Axis.YN.rotationDegrees(180.0F - f));
+        float f = Mth.rotLerp(partialTicks, entity.yBodyRotO, entity.yBodyRot);
+        poseStack.mulPose(Axis.YP.rotationDegrees(180.0F - f));
+        anotherPoseRotP(poseStack, entity, partialTicks);
+
+        float yaw = getInterpolatedRotation(currRot, prevRot, partialTicks);
+        poseStack.mulPose(Axis.YP.rotationDegrees(yaw));
+
+        anotherPoseRotN(poseStack, entity, partialTicks);
+        poseStack.mulPose(Axis.YN.rotationDegrees(180.0F - f));
+    }
+
+    public static float getInterpolatedComboRotation(LivingEntity entity, float partialTicks) {
+        return getInterpolatedRotation(getComboRotation(entity, 0), getComboRotation(entity, -1), partialTicks);
+    }
+
+    private static float getInterpolatedRotation(float currRot, float prevRot, float partialTicks) {
+        // Preserve the legacy render direction. The original persistent-data path
+        // interpolated current rotation back toward the previous tick's rotation.
+        return Mth.rotLerp(partialTicks, currRot, prevRot);
     }
 
     static public void anotherPoseRotP(PoseStack matrixStackIn, LivingEntity entityLiving, float partialTicks) {
@@ -125,28 +136,15 @@ public class UserPoseOverrider {
         }
     }
 
-    static public void setRot(Entity target, float rotYaw, boolean isOffset) {
-        CompoundTag tag = target.getPersistentData();
-
-        float prevRot = tag.getFloat(TAG_ROT);
-        tag.putFloat(TAG_ROT_PREV, prevRot);
-
-        if (isOffset) {
-            rotYaw += prevRot;
-        }
-
-        tag.putFloat(TAG_ROT, rotYaw);
-    }
-
-    static public void resetRot(Entity target) {
-        CompoundTag tag = target.getPersistentData();
-        tag.putFloat(TAG_ROT_PREV, 0);
-        tag.putFloat(TAG_ROT, 0);
-    }
-
-    static public void invertRot(PoseStack matrixStack, Entity entity, float partialTicks) {
-        float rot = entity.getPersistentData().getFloat(TAG_ROT);
-        float rotPrev = entity.getPersistentData().getFloat(TAG_ROT_PREV);
-        matrixStack.mulPose(Axis.YP.rotationDegrees(Mth.rotLerp(partialTicks, rot, rotPrev)));
+    public static float getComboRotation(LivingEntity entity, int tickOffset) {
+        return BladeStateAccess.of(entity.getMainHandItem()).map(state -> {
+            ComboState cs = ComboStateRegistry.REGISTRY.get(state.getComboSeq());
+            if (cs == null)
+                return 0f;
+            long elapsed = state.getElapsedTime(entity);
+            if (entity.level().isClientSide())
+                elapsed = Math.max(0, elapsed - 1);
+            return cs.getRotationYaw((int) elapsed + tickOffset);
+        }).orElse(0f);
     }
 }
