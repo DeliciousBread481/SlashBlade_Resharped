@@ -16,8 +16,6 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.network.PlayMessages;
 
-import java.util.Objects;
-
 public class EntitySpiralSwords extends EntityAbstractSummonedSword {
     private static final EntityDataAccessor<Boolean> IT_FIRED = SynchedEntityData.defineId(EntitySpiralSwords.class,
             EntityDataSerializers.BOOLEAN);
@@ -50,10 +48,8 @@ public class EntitySpiralSwords extends EntityAbstractSummonedSword {
     @Override
     public void tick() {
         if (!itFired()) {
-            if (level().isClientSide()) {
-            	if (getVehicle() == null && this.getOwner() != null) {
-                    startRiding(this.getOwner(), true);
-                }
+            if (getVehicle() == null && this.getOwner() != null) {
+                startRiding(this.getOwner(), true);
             }
         }
 

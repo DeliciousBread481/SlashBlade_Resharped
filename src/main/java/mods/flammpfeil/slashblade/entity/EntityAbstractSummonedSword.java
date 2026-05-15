@@ -45,7 +45,6 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.entity.PartEntity;
 import net.minecraftforge.network.NetworkHooks;
 import net.minecraftforge.network.PlayMessages;
@@ -76,7 +75,7 @@ public class EntityAbstractSummonedSword extends Projectile implements IShootabl
     private static final EntityDataAccessor<Integer> DELAY = SynchedEntityData
             .defineId(EntityAbstractSummonedSword.class, EntityDataSerializers.INT);
 
-    private int ticksInGround;
+    protected int ticksInGround;
     private boolean inGround;
     private BlockState inBlockState;
     private int ticksInAir;
@@ -84,9 +83,17 @@ public class EntityAbstractSummonedSword extends Projectile implements IShootabl
 
     private IntOpenHashSet alreadyHits;
 
+    protected boolean isAlreadyHit(Entity entity) {
+        return alreadyHits != null && alreadyHits.contains(entity.getId());
+    }
+
     private Entity hitEntity = null;
 
-    static final int ON_GROUND_LIFE_TIME = 20 * 5;
+    static final int ON_GROUND_LIFE_TIME_DEFAULT = 20 * 5;
+
+    protected int getOnGroundLifeTime() {
+        return ON_GROUND_LIFE_TIME_DEFAULT;
+    }
 
     private final SoundEvent hitEntitySound = SoundEvents.TRIDENT_HIT;
     private final SoundEvent hitEntityPlayerSound = SoundEvents.TRIDENT_HIT;
@@ -167,7 +174,6 @@ public class EntityAbstractSummonedSword extends Projectile implements IShootabl
                 .scale(velocity);
         this.setDeltaMovement(vec3d);
         float f = Mth.sqrt((float) vec3d.horizontalDistanceSqr());
-        this.setPos(this.position());
         this.setYRot((float) (Mth.atan2(vec3d.x, vec3d.z) * (double) (180F / (float) Math.PI)));
         this.setXRot((float) (Mth.atan2(vec3d.y, f) * (double) (180F / (float) Math.PI)));
         this.yRotO = this.getYRot();
@@ -360,22 +366,28 @@ public class EntityAbstractSummonedSword extends Projectile implements IShootabl
                 	break;
 
                 boolean impactCheck = !net.minecraftforge.event.ForgeEventFactory.onProjectileImpact(this, raytraceresult);
-				if (raytraceresult.getType() == HitResult.Type.ENTITY
-                		&& impactCheck) {
-                    Entity entity = null;
-                    if (raytraceresult instanceof EntityHitResult) {
-                        entity = ((EntityHitResult) raytraceresult).getEntity();
-                    }
-                    Entity entity1 = this.getShooter();
-                    if (entity instanceof LivingEntity && entity1 instanceof LivingEntity) {
-                        if (!TargetSelector.test.test((LivingEntity) entity1, (LivingEntity) entity)) {
-                            raytraceresult = null;
-                            entityraytraceresult = null;
+
+                if (raytraceresult.getType() == HitResult.Type.ENTITY) {
+                    Entity entity = ((EntityHitResult) raytraceresult).getEntity();
+                    if (!impactCheck) {
+                        if (this.alreadyHits == null)
+                            this.alreadyHits = new IntOpenHashSet(5);
+                        this.alreadyHits.add(entity.getId());
+                    } else {
+                        Entity shooter = this.getShooter();
+                        if (entity instanceof LivingEntity && shooter instanceof LivingEntity) {
+                            if (!TargetSelector.test.test((LivingEntity) shooter, (LivingEntity) entity)) {
+                                if (this.alreadyHits == null)
+                                    this.alreadyHits = new IntOpenHashSet(5);
+                                this.alreadyHits.add(entity.getId());
+                                raytraceresult = null;
+                            }
                         }
                     }
                 }
 
-                if (!(disallowedHitBlock && raytraceresult.getType() == HitResult.Type.BLOCK)
+                if (raytraceresult != null
+                        && !(disallowedHitBlock && raytraceresult.getType() == HitResult.Type.BLOCK)
                         && impactCheck) {
                     this.onHit(raytraceresult);
                     this.hasImpulse = true;
@@ -387,6 +399,9 @@ public class EntityAbstractSummonedSword extends Projectile implements IShootabl
 
                 raytraceresult = null;
             }
+
+            if (!this.isAlive())
+                return;
 
             motionVec = this.getDeltaMovement();
             double mx = motionVec.x;
@@ -444,7 +459,7 @@ public class EntityAbstractSummonedSword extends Projectile implements IShootabl
             this.checkInsideBlocks();
         }
 
-        if (!this.level().isClientSide() && ticksInGround <= 0 && 100 < this.tickCount) {
+        if (!this.level().isClientSide() && ticksInGround <= 0 && 100 < this.tickCount && !this.isPassenger()) {
             this.remove(RemovalReason.DISCARDED);
         }
 
@@ -452,7 +467,7 @@ public class EntityAbstractSummonedSword extends Projectile implements IShootabl
 
     protected void tryDespawn() {
         ++this.ticksInGround;
-        if (ON_GROUND_LIFE_TIME <= this.ticksInGround) {
+        if (getOnGroundLifeTime() <= this.ticksInGround) {
             this.burst();
         }
 
@@ -490,7 +505,9 @@ public class EntityAbstractSummonedSword extends Projectile implements IShootabl
     }
 
     public void doForceHitEntity(Entity target) {
-        onHitEntity(new EntityHitResult(target));
+        if (target != null) {
+            onHitEntity(new EntityHitResult(target));
+        }
     }
 
     @Override
@@ -625,7 +642,7 @@ public class EntityAbstractSummonedSword extends Projectile implements IShootabl
         return ProjectileUtil.getEntityHitResult(this.level(), this, p_213866_1_, p_213866_2_,
                 this.getBoundingBox().expandTowards(this.getDeltaMovement()).inflate(1.0D), (entity) -> entity.canBeHitByProjectile() && !entity.isSpectator()
                         && (entity != this.getShooter() || this.ticksInAir >= 5)
-                        && (this.alreadyHits == null || !this.alreadyHits.contains(entity.getId())));
+                        && !this.isAlreadyHit(entity));
     }
 
     @Nullable
@@ -683,11 +700,14 @@ public class EntityAbstractSummonedSword extends Projectile implements IShootabl
     }
 
     public void affectEntity(LivingEntity focusEntity, List<MobEffectInstance> effects, double factor) {
-        for (MobEffectInstance effectinstance : getPotionEffects()) {
+        for (MobEffectInstance effectinstance : effects) {
             MobEffect effect = effectinstance.getEffect();
             if (effect.isInstantenous()) {
-                effect.applyInstantenousEffect(this, this.getShooter(), focusEntity, effectinstance.getAmplifier(),
-                        factor);
+                Entity shooter = this.getShooter();
+                if (shooter != null) {
+                    effect.applyInstantenousEffect(this, shooter, focusEntity, effectinstance.getAmplifier(),
+                            factor);
+                }
             } else {
                 int duration = (int) (factor * (double) effectinstance.getDuration() + 0.5D);
                 if (duration > 0) {
@@ -716,11 +736,13 @@ public class EntityAbstractSummonedSword extends Projectile implements IShootabl
 
     @Nullable
     public Entity getHitEntity() {
-        if (hitEntity == null) {
-            int id = this.entityData.get(HIT_ENTITY_ID);
-            if (0 <= id) {
-                hitEntity = this.level().getEntity(id);
-            }
+        int id = this.entityData.get(HIT_ENTITY_ID);
+        if (id < 0) {
+            hitEntity = null;
+            return null;
+        }
+        if (hitEntity == null || hitEntity.getId() != id || !hitEntity.isAlive()) {
+            hitEntity = this.level().getEntity(id);
         }
         return hitEntity;
     }
@@ -761,18 +783,20 @@ public class EntityAbstractSummonedSword extends Projectile implements IShootabl
     }
 
     private static final ResourceLocation defaultModel = new ResourceLocation(defaultModelName + ".obj");
-    public LazyOptional<ResourceLocation> modelLoc = LazyOptional
-            .of(() -> new ResourceLocation(getModelName() + ".obj"));
     private static final ResourceLocation defaultTexture = new ResourceLocation(defaultModelName + ".png");
-    public LazyOptional<ResourceLocation> textureLoc = LazyOptional
-            .of(() -> new ResourceLocation(getModelName() + ".png"));
 
     public ResourceLocation getModelLoc() {
-        return modelLoc.orElse(defaultModel);
+        String name = getModelName();
+        if (name.isEmpty())
+            return defaultModel;
+        return new ResourceLocation(name + ".obj");
     }
 
     public ResourceLocation getTextureLoc() {
-        return textureLoc.orElse(defaultTexture);
+        String name = getModelName();
+        if (name.isEmpty())
+            return defaultTexture;
+        return new ResourceLocation(name + ".png");
     }
 
     @Override

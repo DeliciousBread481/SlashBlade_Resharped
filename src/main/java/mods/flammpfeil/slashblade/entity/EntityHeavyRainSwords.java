@@ -18,8 +18,6 @@ import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.network.PlayMessages;
 
-import java.util.Objects;
-
 public class EntityHeavyRainSwords extends EntityAbstractSummonedSword {
     private static final EntityDataAccessor<Boolean> IT_FIRED = SynchedEntityData.defineId(EntityHeavyRainSwords.class,
             EntityDataSerializers.BOOLEAN);
@@ -62,8 +60,8 @@ public class EntityHeavyRainSwords extends EntityAbstractSummonedSword {
     public void tick() {
         if (!itFired()) {
             if (level().isClientSide()) {
-                if (getVehicle() == null) {
-                    startRiding(Objects.requireNonNull(this.getOwner()), true);
+                if (getVehicle() == null && this.getOwner() != null) {
+                    startRiding(this.getOwner(), true);
                 }
             }
         }
@@ -135,15 +133,8 @@ public class EntityHeavyRainSwords extends EntityAbstractSummonedSword {
         super.onHitEntity(entityHitResult);
     }
 
-    int ON_GROUND_LIFE_TIME = 20;
-    int ticksInGround = 0;
-
     @Override
-    protected void tryDespawn() {
-        ++this.ticksInGround;
-        if (ON_GROUND_LIFE_TIME <= this.ticksInGround) {
-            this.burst();
-        }
-
+    protected int getOnGroundLifeTime() {
+        return 20;
     }
 }

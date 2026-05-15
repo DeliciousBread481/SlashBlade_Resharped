@@ -65,7 +65,6 @@ public class UserPoseOverrider {
     }
 
     static public void anotherPoseRotP(PoseStack matrixStackIn, LivingEntity entityLiving, float partialTicks) {
-        final boolean isPositive = true;
         final float np = 1;
 
         float f = entityLiving.getSwimAmount(partialTicks);
@@ -96,7 +95,6 @@ public class UserPoseOverrider {
     }
 
     static public void anotherPoseRotN(PoseStack matrixStackIn, LivingEntity entityLiving, float partialTicks) {
-        final boolean isPositive = false;
         final float np = -1;
 
         float f = entityLiving.getSwimAmount(partialTicks);
